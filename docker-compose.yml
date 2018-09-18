@@ -1,11 +1,11 @@
 version: "3"
 services:
-  kademliaNodes:
-    image: larjim/kademlialab:latest
+  kademliaBajs:
+    image: kademlia:latest
     stdin_open: true
     tty: true
     deploy:
-      replicas: 5  
+      replicas:   
 #        resources:
 #           limits:
 #              cpus: "0.1"
