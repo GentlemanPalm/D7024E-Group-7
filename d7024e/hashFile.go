@@ -25,6 +25,7 @@ func Hash(arg string) {
 	fmt.Printf("File: %s", file)
 
 	 h := sha1.New()
+	 h.Write([]byte(arg))
 	 h.Write([]byte(content))
 	 bs := h.Sum(nil)
 
