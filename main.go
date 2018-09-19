@@ -5,11 +5,11 @@ import (
 	"d7024e"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
 	"strconv"
+	"time"
 )
 
 const defaultPort = "42042"
@@ -35,8 +35,6 @@ func main() {
 	fmt.Println("\n" + "Hello, I hashed this file: ")
 	d7024e.Hash(str)
 
-	ioutil.WriteFile("come_on", []byte("asdf"), 0644)
-
 	go listenForConnections()
 
 	//simple Read
@@ -50,7 +48,8 @@ func main() {
 
 func sendStuff() {
 	//Connect udp
-	saddr, e0 := net.ResolveUDPAddr("udp", "kademliaBootstrap:"+defaultPort)
+	time.Sleep(time.Duration(10) * time.Second)
+	saddr, e0 := net.ResolveUDPAddr("udp", "kademliaBootstrap:42042")
 	if e0 != nil {
 		fmt.Println(e0)
 	}
@@ -60,7 +59,7 @@ func sendStuff() {
 		return
 	}
 	defer conn.Close()
-
+	rand.Seed(time.Now().Unix())
 	rnum := rand.Int() % 100000
 	//simple write
 	fmt.Println("Trying to write a packet of data with " + strconv.Itoa(rnum))
@@ -68,8 +67,8 @@ func sendStuff() {
 	fmt.Println("Wrote a packet of data")
 }
 
-func replyTo(uaddr *net.UDPAddr) {
-	conn, err := net.DialUDP("udp", nil, uaddr)
+func replyTo(uaddr net.Addr) {
+	conn, err := net.Dial("udp", uaddr.String())
 	defer conn.Close()
 
 	_, err2 := conn.Write([]byte("Fuck you"))
@@ -86,12 +85,12 @@ func listenForConnections() {
 	// http://www.minaandrawos.com/2016/05/14/udp-vs-tcp-in-golang/
 
 	// listen to incoming udp packets
-	var nrofPacketsRcvd int = 0
+	//var nrofPacketsRcvd int = 0
 	fmt.Println("Entering listenForConnections")
 
-	saddr, _ := net.ResolveUDPAddr("udp", ":"+defaultPort)
+	//saddr, _ := net.ResolveUDPAddr("udp", ":"+defaultPort)
 
-	pc, err := net.ListenUDP("udp", saddr)
+	pc, err := net.ListenPacket("udp", ":"+defaultPort)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,28 +99,32 @@ func listenForConnections() {
 
 	go sendStuff()
 
+	buffer := make([]byte, 1024)
+
 	for {
 		//simple read
-		buffer := make([]byte, 1024)
+
 		fmt.Print("Reading from ListenPacket...")
-		_, addr, err := pc.ReadFromUDP(buffer)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		fmt.Println(" done")
-
-		nrofPacketsRcvd = nrofPacketsRcvd + 1
-		s := string(buffer[:14])
-
-		fmt.Println("Received: " + s + " from " + addr.String())
-
-		go replyTo(addr)
-
-		ioutil.WriteFile("packetsreceived", []byte(strconv.Itoa(nrofPacketsRcvd)), 0644)
+		_, addr, err := pc.ReadFrom(buffer)
+		go doAsync(buffer, addr, err)
 
 		//simple write
 		//pc.WriteTo([]byte("Hello from client"), net.ResolveUDPAddr("udp", ":2000"))
 	}
+}
+
+func doAsync(buffer []byte, addr net.Addr, err error) {
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(" done")
+
+	s := string(buffer[:14])
+
+	fmt.Println("Received: " + s + " from " + addr.String())
+
+	go replyTo(addr)
+
+	//ioutil.WriteFile("packetsreceived", []byte(strconv.Itoa(nrofPacketsRcvd)), 0644)
 }

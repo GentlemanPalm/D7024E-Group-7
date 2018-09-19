@@ -12,8 +12,8 @@ services:
           memory: 50M
 #    ports:
 #      - "3330:80"
-    networks:
-      - kademlia_network
+   # networks:
+    #  - kademlia_network
   kademliaNodes:
     image: kademlia:latest
     stdin_open: true
@@ -30,8 +30,8 @@ services:
         condition: on-failure
 #    ports:
 #      - "4000:80"
-    networks:
-      - kademlia_network
+    #networks:
+    #  - kademlia_network
       
 networks:
   kademlia_network:

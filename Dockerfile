@@ -12,4 +12,5 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 RUN protoc --go_out=${GOPATH}/src/NetworkMessage *.proto
 RUN CGO_ENABLED=0 GOARCH=386 /usr/local/go/bin/go build -o main .
 #RUN echo $GOPATH
-CMD ["/usr/local/go/bin/go","run","main.go"]
+#CMD ["/usr/local/go/bin/go","run","main.go"]
+CMD ["./run.sh"]
