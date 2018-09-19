@@ -4,6 +4,7 @@ services:
     image: kademlia:latest
     stdin_open: true
     tty: true
+    hostname: kademliaBootstrap
     deploy:
       resources:
         limits:
@@ -17,6 +18,8 @@ services:
     image: kademlia:latest
     stdin_open: true
     tty: true
+    links:
+      - kademliaBootstrap:kademliaBootstrap
     deploy:
       replicas: 3 
 #        resources:
