@@ -6,3 +6,15 @@ message SearchRequest {
   int32 page_number = 2;
   int32 result_per_page = 3;
 }
+
+message Ping {
+  string random_id = 1;
+  string kademlia_id = 2;
+  string address = 3;
+}
+
+message Pong {
+  string random_id = 1;
+  string kademlia_id = 2;
+  string address = 3;
+}

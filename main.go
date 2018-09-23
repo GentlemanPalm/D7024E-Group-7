@@ -6,10 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
+
 	"net"
-	"strconv"
+	"strings"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 )
 
 const defaultPort = "42042"
@@ -59,25 +61,57 @@ func sendStuff() {
 		return
 	}
 	defer conn.Close()
-	rand.Seed(time.Now().Unix())
-	rnum := rand.Int() % 100000
+
+	//rnum := rand.Int() % 100000
 	//simple write
-	fmt.Println("Trying to write a packet of data with " + strconv.Itoa(rnum))
-	conn.Write([]byte(strconv.Itoa(rnum)))
+	fmt.Println("Trying to write a packet of data")
+	ping := &NetworkMessage.Ping{
+		RandomId:   d7024e.NewRandomKademliaID().String(),
+		KademliaId: "AAAAAAAAAAAAAAA",
+		Address:    "0.0.0.0",
+	}
+
+	out, merr := proto.Marshal(ping)
+	if merr != nil {
+		fmt.Println("Error marshaling ping packet")
+	} else {
+		//fmt.Println("Marshalled data is " + string(out[:]))
+		fmt.Println("RandomId is " + ping.RandomId)
+	}
+	_, werr := conn.Write(out)
+	if werr != nil {
+		fmt.Println("Something went wrong with sending inital packet")
+		fmt.Println(werr)
+	}
 	fmt.Println("Wrote a packet of data")
 }
 
 func replyTo(uaddr net.Addr) {
-	conn, err := net.Dial("udp", uaddr.String())
+	adr := strings.Split(uaddr.String(), ":")
+	conn, err := net.Dial("udp", adr[0]+":"+defaultPort)
 	defer conn.Close()
 
-	_, err2 := conn.Write([]byte("Fuck you"))
+	ping := &NetworkMessage.Ping{
+		RandomId:   d7024e.NewRandomKademliaID().String(),
+		KademliaId: "AAAAAAAAAAAAAAA",
+		Address:    "0.0.0.0",
+	}
+
+	out, merr := proto.Marshal(ping)
+	if merr != nil {
+		fmt.Println("Error marshaling ping packet")
+	} else {
+		//fmt.Println("Marshalled data is " + string(out[:]))
+		fmt.Println("RandomId is " + ping.RandomId)
+	}
+
+	_, err2 := conn.Write(out)
 	if err != nil || err2 != nil {
 		fmt.Println("Error when replying to the message")
 		fmt.Println(err)
 		fmt.Println(err2)
 	}
-	fmt.Println("Replied to " + uaddr.String() + " and told it to fuck off")
+	fmt.Println("Replied to " + adr[0] + ":" + defaultPort + " and told it to fuck off")
 }
 
 func listenForConnections() {
@@ -99,30 +133,36 @@ func listenForConnections() {
 
 	go sendStuff()
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, 4096)
 
 	for {
 		//simple read
 
 		fmt.Print("Reading from ListenPacket...")
-		_, addr, err := pc.ReadFrom(buffer)
-		go doAsync(buffer, addr, err)
+		size, addr, err := pc.ReadFrom(buffer)
+		go doAsync(buffer, addr, err, size)
 
 		//simple write
 		//pc.WriteTo([]byte("Hello from client"), net.ResolveUDPAddr("udp", ":2000"))
 	}
 }
 
-func doAsync(buffer []byte, addr net.Addr, err error) {
+func doAsync(buffer []byte, addr net.Addr, err error, size int) {
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println(" done")
 
-	s := string(buffer[:14])
+	ping := &NetworkMessage.Ping{}
+	marshalerr := proto.Unmarshal(buffer[:size], ping)
+	if marshalerr != nil {
+		fmt.Println("Received an error from the ping command")
+		fmt.Println(marshalerr)
+	}
+	//	s := string(buffer[:14])
 
-	fmt.Println("Received: " + s + " from " + addr.String())
+	fmt.Println("Received: " + ping.RandomId + " from " + addr.String())
 
 	go replyTo(addr)
 
