@@ -18,3 +18,8 @@ message Pong {
   string kademlia_id = 2;
   string address = 3;
 }
+
+message Packet {
+  Ping ping = 1;
+  Pong pong = 2;
+}

@@ -1,6 +1,6 @@
-// This file intends to implement a table of ping calls and their timeouts
-
 package d7024e
+
+// This file intends to implement a table of ping calls and their timeouts
 
 import (
 	"sync"
@@ -47,6 +47,9 @@ func (table *PingTable) Pop(id *KademliaID) *row {
 	table.lock.Lock()
 	defer table.lock.Unlock()
 	for i := 0; i < len(table.rows); i = i + 1 {
+		if table.rows[i].randomID == nil {
+			continue
+		}
 		if table.rows[i].randomID.Equals(id) {
 			item := table.rows[i]
 			table.rows = table.rows[:i+copy(table.rows[i:], table.rows[i+1:])]

@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+// TODO: Make buckets no larger than k in size
+
 // bucket definition
 // contains a List
 type bucket struct {
