@@ -43,7 +43,7 @@ func main() {
 	network := d7024e.NewNetwork(routingTable)
 
 	sport, _ := strconv.Atoi(*port)
-	go send2(me.ID)
+	go send2(me.ID, network)
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -81,7 +81,7 @@ func getIaddr() string {
 	return iaddr
 }
 
-func send2(kademliaId *d7024e.KademliaID) {
+func send2(kademliaId *d7024e.KademliaID, network *d7024e.Network) {
 	fmt.Println("Entered send 2")
 	//Connect udp
 	time.Sleep(time.Duration(9) * time.Second)

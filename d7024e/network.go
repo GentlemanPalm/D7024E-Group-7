@@ -42,12 +42,11 @@ func (network *Network) Listen(port int) {
 	defer pc.Close()
 	fmt.Println("Now listening for connections")
 
-	buffer := make([]byte, 8192)
-
 	for {
 		//simple read
 
 		fmt.Print("Reading from ListenPacket...")
+		buffer := make([]byte, 8192)
 		size, addr, err := pc.ReadFrom(buffer)
 		go network.handleReceive(buffer, size, addr.String(), err)
 
@@ -83,20 +82,18 @@ func (network *Network) handleReceive(buffer []byte, size int, addr string, err 
 }
 
 func (network *Network) processPacket(packet *NetworkMessage.Packet) {
-	if packet == nil {
-
-	}
-
 	if packet.Ping != nil {
 		go network.HandlePingMessage(packet.Ping)
 	} else {
 		fmt.Println("Received packet, but PING left blank")
 	}
+
 	if packet.Pong != nil {
 		go network.HandlePongMessage(packet.Pong)
 	} else {
 		fmt.Println("Received packet, but PONG left blank")
 	}
+
 }
 
 // Yank function to determine IP on local network with docker.
@@ -127,6 +124,8 @@ func getIaddr() string {
 
 func (network *Network) HandlePingMessage(pingMessage *NetworkMessage.Ping) {
 	fmt.Println("Received Ping Message. I should update the buckets here at some point")
+	contact := NewContact(NewKademliaID(pingMessage.KademliaId), pingMessage.Address)
+	network.routingTable.AddContact(contact)
 	network.SendPongMessage(network.CreatePongMessage(pingMessage), pingMessage.Address)
 }
 
@@ -158,8 +157,17 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID, replacement *Con
 
 func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	// Atomically remove the item from the table and get the row
-	network.pingTable.Pop(NewKademliaID(pongMessage.KademliaId))
-	fmt.Println("Got the PONG message for " + pongMessage.KademliaId + " with random ID " + pongMessage.RandomId + " TODO: Implement update of pong packet")
+	row := network.pingTable.Pop(NewKademliaID(pongMessage.KademliaId))
+	var contact Contact
+	if row == nil {
+		fmt.Println("Received pong with random id " + pongMessage.RandomId + " but nothing was found in the ping table")
+		contact = NewContact(NewKademliaID(pongMessage.KademliaId), pongMessage.Address)
+	} else {
+		contact = NewContact(row.kademliaID, pongMessage.Address)
+	}
+	// Does this simply work??
+	network.routingTable.AddContact(contact)
+	fmt.Println("Got the PONG message for " + pongMessage.KademliaId + " with random ID " + pongMessage.RandomId)
 }
 
 func sendDataToAddress(address string, data []byte) {
@@ -186,6 +194,10 @@ func sendDataToAddress(address string, data []byte) {
 	fmt.Println("Wrote a packet of data")
 }
 
+func createPacket() *NetworkMessage.Packet {
+	return &NetworkMessage.Packet{}
+}
+
 func ensurePort(address string, port string) string {
 	adr := strings.Split(address, ":")
 	return adr[0] + ":" + port
@@ -208,11 +220,30 @@ func (network *Network) SendPongMessage(pongMessage *NetworkMessage.Pong, addres
 
 // PING RPC
 func (network *Network) SendPingMessage(contact *Contact) {
-	// TODO
-	// 1. Send a PING Message to the contact
-	// 2. Set up a listener for the PONG reply
-	// 3. Update routing table for when PONG is received
-	// 4. Allow this RPC to be piggybacked onto other RPCs?
+	network.SendPingMessageWithReplacement(contact, nil)
+}
+
+func (network *Network) SendPingMessageWithReplacement(contact *Contact, replacement *Contact) {
+	randomID := NewRandomKademliaID()
+	network.pingTable.Push(randomID, contact.ID)
+	go network.HandlePingTimeout(randomID, replacement)
+	network.sendPingPacket(randomID, contact)
+}
+
+func (network *Network) sendPingPacket(randomID *KademliaID, contact *Contact) {
+	packet := createPacket()
+	packet.Ping = &NetworkMessage.Ping{
+		RandomId:   randomID.String(),
+		KademliaId: network.routingTable.Me().ID.String(),
+		Address:    network.routingTable.Me().Address,
+	}
+
+	out, merr := proto.Marshal(packet)
+	if merr != nil {
+		fmt.Println("Error marshalling ping packet")
+	}
+
+	sendDataToAddress(contact.Address, out)
 }
 
 // FIND_NODE RPC

@@ -19,6 +19,36 @@ message Pong {
   string address = 3;
 }
 
+message Store {
+  string hash = 1;
+  bytes content = 2;
+}
+
+message FindNode {
+  string hash = 1;
+}
+
+message KademliaPair {
+  string kademlia_id = 1;
+  string address = 2;
+}
+
+message NodeResponse {
+  repeated KademliaPair nodes = 1;
+}
+
+message FindValue {
+  string hash = 1;
+}
+
+
+message ValueResponse {
+  oneof response {
+    NodeResponse nodes = 1;
+    bytes content = 2; 
+  }
+}
+
 message Packet {
   Ping ping = 1;
   Pong pong = 2;
