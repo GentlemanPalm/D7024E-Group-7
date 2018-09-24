@@ -34,9 +34,9 @@ func main() {
 	fmt.Println("Hello, World! " + x.String() + y.String())
 
 	//Test for hash
-	var str = "d7024e/text.txt"
-	fmt.Println("\n" + "Hello, I hashed this file: ")
-	d7024e.Hash(str)
+	//var str = "d7024e/text.txt"
+	//fmt.Println("\n",d7024e.Hash(str))
+	
 
 	me := d7024e.NewContact(d7024e.NewRandomKademliaID(), getIaddr())
 	routingTable := d7024e.NewRoutingTable(me)

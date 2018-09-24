@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func Hash(arg string) {
+func Hash(arg string) string {
 
 	content, err := ioutil.ReadFile(arg)
 	if err != nil {
@@ -34,5 +34,9 @@ func Hash(arg string) {
 	 fmt.Printf("%s", "\n" + "Hash: ")
 	 fmt.Printf("%x\n",bs)
 
+	 str := fmt.Sprintf("%x\n", bs)
+
 	 file.Close()
+
+	 return str;
 }

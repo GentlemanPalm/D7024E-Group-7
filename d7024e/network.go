@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"io/ioutil"
+	
+	
 
 	"github.com/golang/protobuf/proto"
 )
@@ -94,6 +97,13 @@ func (network *Network) processPacket(packet *NetworkMessage.Packet) {
 		fmt.Println("Received packet, but PONG left blank")
 	}
 
+	if packet.Store != nil {
+		fmt.Println("Received packet with STORE")
+		go network.HandleStoreMessage(packet.Store)
+	} else {
+		fmt.Println("Received packet, but Store left blank")
+	}
+
 }
 
 // Yank function to determine IP on local network with docker.
@@ -138,6 +148,22 @@ func (network *Network) CreatePongMessage(pingMessage *NetworkMessage.Ping) *Net
 	return pong
 }
 
+func (network *Network) CreateStoreMessage(filePath string) *NetworkMessage.Store {
+
+	//Move this.
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Store message created, with hash:" + filePath)
+	store := &NetworkMessage.Store{
+		Hash: Hash(filePath),
+		Content:    content,
+	}
+	return store
+}
+
 func (network *Network) HandlePingTimeout(randomID *KademliaID, replacement *Contact) {
 	time.Sleep(1 * time.Second)
 	// Atomic operation, removes the item from the table and returns it
@@ -168,6 +194,30 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	// Does this simply work??
 	network.routingTable.AddContact(contact)
 	fmt.Println("Got the PONG message for " + pongMessage.KademliaId + " with random ID " + pongMessage.RandomId)
+
+	//Send store when recieving pong, test only.
+	network.SendStoreMessage(network.CreateStoreMessage("d7024e/text.txt"), pongMessage.Address)
+
+}
+
+func (network *Network) HandleStoreMessage(storeMessage *NetworkMessage.Store) {
+	//Recieve data and filename
+	data := storeMessage.Content
+	fileName := storeMessage.Hash
+
+	fmt.Println("Recieved store message, with filename:" + fileName)
+	
+    err := ioutil.WriteFile(fileName, data, 0644)
+    if err != nil {
+		log.Fatal(err)
+	}
+	//Test for reading stored file
+	content, err2 := ioutil.ReadFile(fileName)
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+
+	fmt.Printf("File contents: %s", content)
 }
 
 func sendDataToAddress(address string, data []byte) {
@@ -262,6 +312,21 @@ func (network *Network) SendFindDataMessage(hash string) {
 }
 
 // STORE RPC
-func (network *Network) SendStoreMessage(data []byte) {
-	// TODO
+func (network *Network) SendStoreMessage(storeMessage *NetworkMessage.Store, address string) {
+	fmt.Println("SEND MESSAGE STORE")
+	packet := createPacket()
+	packet.Store = storeMessage
+
+	
+	out, merr := proto.Marshal(packet)
+	if merr != nil {
+		fmt.Println("Error marshaling store packet")
+	} else {
+		//fmt.Println("Marshalled data is " + string(out[:]))
+		fmt.Println("Store adress: " + address)
+		sendDataToAddress(ensurePort(address, "42042"), out)
+	}
 }
+
+
+
