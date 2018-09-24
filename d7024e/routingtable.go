@@ -2,6 +2,9 @@ package d7024e
 
 const bucketSize = 20
 
+// TODO: Needs to be managed under mutex?
+// The buckets themselves are already properly managed through mutex
+
 // RoutingTable definition
 // keeps a refrence contact of me and an array of buckets
 type RoutingTable struct {
