@@ -261,7 +261,7 @@ func (network *Network) SendFindDataMessage(hash string) {
 	// TODO
 }
 
-// FIND_NODE RPC
+// STORE RPC
 func (network *Network) SendStoreMessage(data []byte) {
 	// TODO
 }

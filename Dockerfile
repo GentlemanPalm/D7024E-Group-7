@@ -4,7 +4,8 @@ RUN mkdir /home/go/src/app
 COPY . /home/go/src/app
 COPY d7024e /home/go/src/d7024e
 WORKDIR /home/go/src/app
-RUN mkdir /home/go/src/NetworkMessage
+RUN mkdir /home/go/src/NetworkMessage &&
+    mkdir /home/go/src/app/Files
 ENV GOPATH /home/go
 ENV PATH="${GOPATH}/bin:${PATH}"
 # RUN apt-get update && apt-get upgrade -y && apt-get -y install iputils-ping
