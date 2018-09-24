@@ -44,7 +44,7 @@ func main() {
 	//conn.Read(buffer)
 
 	for {
-		//fmt.Println("hue")
+		time.Sleep(5 * time.Second);
 	}
 }
 
