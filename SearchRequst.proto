@@ -24,8 +24,9 @@ message Store {
   bytes content = 2;
 }
 
-message FindNode {
-  string hash = 1;
+message Find {
+  string random_id = 1;
+  string hash = 2;
 }
 
 message KademliaPair {
@@ -34,22 +35,29 @@ message KademliaPair {
 }
 
 message NodeResponse {
-  repeated KademliaPair nodes = 1;
+  string random_id = 1;
+  repeated KademliaPair nodes = 2;
 }
-
-message FindValue {
-  string hash = 1;
-}
-
 
 message ValueResponse {
+  string random_id = 1;
   oneof response {
-    NodeResponse nodes = 1;
-    bytes content = 2; 
+    NodeResponse nodes = 2;
+    bytes content = 3; 
   }
 }
 
 message Packet {
   Ping ping = 1;
   Pong pong = 2;
+
+  Store store = 3;
+
+  Find find_node = 4;
+  ValueResponse nodes = 5;
+
+  Find find_value = 6;
+  ValueResponse value = 7; 
+
+  KademliaPair origin = 8;
 }

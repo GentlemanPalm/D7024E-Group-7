@@ -6,9 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"strconv"
-
+	"math/rand"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,13 +37,18 @@ func main() {
 	var str = "d7024e/text.txt"
 	fmt.Println("\n" + "Hello, I hashed this file: ")
 	d7024e.Hash(str)
-
+	//fmt.Println("Current time is " + strconv.Itoa(time.Now().Nanosecond()))
+	rand.Seed(int64(time.Now().Nanosecond()))
 	me := d7024e.NewContact(d7024e.NewRandomKademliaID(), getIaddr())
+	fmt.Println("Created contact for myself")
+	fmt.Println("Reachable as " + me.ID.String() + " " + me.Address)
 	routingTable := d7024e.NewRoutingTable(me)
 	network := d7024e.NewNetwork(routingTable)
 
 	sport, _ := strconv.Atoi(*port)
 	go send2(me.ID, network)
+	go testFindNode(me.ID, network, 14)
+	go testFindNode(me.ID, network, 25)
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -79,6 +84,12 @@ func getIaddr() string {
 		}
 	}
 	return iaddr
+}
+
+func testFindNode(target *d7024e.KademliaID, network *d7024e.Network, delay int) {
+	time.Sleep(time.Duration(delay) * time.Second)
+	fmt.Println("Waited the timeout period. Now doing node lookup")
+	network.SendFindContactMessage(d7024e.NewRandomKademliaID(), network.Me())
 }
 
 func send2(kademliaId *d7024e.KademliaID, network *d7024e.Network) {
