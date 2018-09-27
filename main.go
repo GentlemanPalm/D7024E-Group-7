@@ -48,7 +48,8 @@ func main() {
 	sport, _ := strconv.Atoi(*port)
 	go send2(me.ID, network)
 	go testFindNode(me.ID, network, 14)
-	go testFindNode(me.ID, network, 25)
+	//go testFindNode(me.ID, network, 25)
+	go testNodeLookup(me.ID, network, 20)
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -84,6 +85,23 @@ func getIaddr() string {
 		}
 	}
 	return iaddr
+}
+
+func testNodeLookup(id *d7024e.KademliaID, network *d7024e.Network, delay int) {
+	time.Sleep(time.Duration(delay) * time.Second)
+	fmt.Println("At last, NodeLookup. Not just FindNode.")
+	network.NodeLookup(id, printContacts)
+}
+
+func printContacts(contacts []d7024e.Contact) {
+	fmt.Println("Holy crap. NodeLookup finished!")
+	for i := range contacts {
+		if contacts[i].ID != nil {
+			fmt.Println(contacts[i].ID.String() + " @@@ " + contacts[i].Address)
+		} else {
+			fmt.Println("Had a NIL value for one of contacts")
+		}
+	}
 }
 
 func testFindNode(target *d7024e.KademliaID, network *d7024e.Network, delay int) {

@@ -13,7 +13,7 @@ import (
 type frow struct {
 	randomID   *KademliaID
 	recipient  *KademliaID
-	onTimeout  func(*KademliaID)
+	onTimeout  func(*KademliaID, *KademliaID)
 	onResponse func(*KademliaID, *NetworkMessage.ValueResponse)
 }
 
@@ -48,7 +48,7 @@ func (ft *FindTable) ProcessResult(response *NetworkMessage.ValueResponse) {
 }
 
 func (ft *FindTable) MakeRequest(recipient *KademliaID,
-	onTimeout func(*KademliaID),
+	onTimeout func(*KademliaID, *KademliaID),
 	onResponse func(*KademliaID, *NetworkMessage.ValueResponse)) *KademliaID {
 
 	ft.lock.Lock()
@@ -78,7 +78,7 @@ func (table *FindTable) deleteRandomKey(key *KademliaID) *frow {
 	return nil
 }
 
-func (ft *FindTable) timeout(onTimeout func(*KademliaID), rID *KademliaID) {
+func (ft *FindTable) timeout(onTimeout func(*KademliaID, *KademliaID), rID *KademliaID) {
 	time.Sleep(time.Duration(1) * time.Second)
 
 	ft.lock.Lock()
@@ -89,7 +89,7 @@ func (ft *FindTable) timeout(onTimeout func(*KademliaID), rID *KademliaID) {
 	if elem != nil {
 		fmt.Println("Timeout occurred and " + rID.String() + " was discarded.")
 		if onTimeout != nil {
-			onTimeout(elem.recipient)
+			onTimeout(elem.recipient, elem.randomID)
 		} else {
 			fmt.Println("Timeout occurred, but the onTimeout function wasn't set")
 		}
