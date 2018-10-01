@@ -49,6 +49,7 @@ func main() {
 
 	sport, _ := strconv.Atoi(*port)
 	go send2(me.ID, network)
+	d7024e.Republish(network)
 	network.Listen(sport)
 	//go listenForConnections()
 

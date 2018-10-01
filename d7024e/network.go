@@ -190,12 +190,12 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	} else {
 		contact = NewContact(row.kademliaID, pongMessage.Address)
 	}
-	// Does this simply work??
+	// Does this simply work?? Answer is no my friend!
 	network.routingTable.AddContact(contact)
 	fmt.Println("Got the PONG message for " + pongMessage.KademliaId + " with random ID " + pongMessage.RandomId)
 
 	//Send store when recieving pong, test only.
-	network.SendStoreMessage(network.CreateStoreMessage("d7024e/text.txt"), pongMessage.Address)
+	//network.SendStoreMessage(network.CreateStoreMessage("d7024e/text.txt"), pongMessage.Address)
 
 }
 
