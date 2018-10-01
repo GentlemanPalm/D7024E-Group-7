@@ -18,6 +18,10 @@ import (
 const defaultPort = "42042"
 
 func main() {
+	//Get globals
+	globals := d7024e.GetGlobals()
+	fmt.Println(globals)
+
 	// This section intends to parse command line parameters
 	var port = flag.String("port", defaultPort, "Port to expect connections to")
 	var bootstrapIP = flag.String("bsip", "kademliaBootstrap", "IP or network hostname of bootstrap node")
@@ -36,6 +40,7 @@ func main() {
 	//Test for hash
 	//var str = "d7024e/text.txt"
 	//fmt.Println("\n",d7024e.Hash(str))
+
 	
 
 	me := d7024e.NewContact(d7024e.NewRandomKademliaID(), getIaddr())

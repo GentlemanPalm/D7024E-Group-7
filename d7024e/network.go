@@ -98,7 +98,6 @@ func (network *Network) processPacket(packet *NetworkMessage.Packet) {
 	}
 
 	if packet.Store != nil {
-		fmt.Println("Received packet with STORE")
 		go network.HandleStoreMessage(packet.Store)
 	} else {
 		fmt.Println("Received packet, but Store left blank")
@@ -206,13 +205,13 @@ func (network *Network) HandleStoreMessage(storeMessage *NetworkMessage.Store) {
 	fileName := storeMessage.Hash
 
 	fmt.Println("Recieved store message, with filename:" + fileName)
-	
-    err := ioutil.WriteFile(fileName, data, 0644)
+	filePath := "Files/" + fileName
+    err := ioutil.WriteFile(filePath, data, 0644)
     if err != nil {
 		log.Fatal(err)
 	}
 	//Test for reading stored file
-	content, err2 := ioutil.ReadFile(fileName)
+	content, err2 := ioutil.ReadFile(filePath)
 	if err2 != nil {
 		log.Fatal(err2)
 	}
