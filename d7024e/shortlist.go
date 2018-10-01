@@ -13,19 +13,20 @@ import (
 type ShortlistItem struct {
 	contact *Contact
 	visited uint // 0 for not yet visited, 1 for request sent, 2 for response received
-	lock    *sync.Mutex
 }
 
 /*
  * The actual shortlist, thread safe.
  * */
 type Shortlist struct {
-	items    map[string]*ShortlistItem // Items currently in consideration
-	dead     map[string]*ShortlistItem // Items verified to be dead
-	target   *KademliaID
-	me       *Contact
-	callback NodeLookupCallback
-	lock     *sync.Mutex
+	items       map[string]*ShortlistItem // Items currently in consideration
+	dead        map[string]*ShortlistItem // Items verified to be dead
+	target      *KademliaID
+	me          *Contact
+	callback    NodeLookupCallback
+	lookupValue uint // 0 for 'no', 1 for 'yes' and 2 for 'received' (prevents duplicate callbacks)
+	content     *[]byte
+	lock        *sync.Mutex
 }
 
 /*
@@ -46,13 +47,14 @@ func NewShortlistTable() *ShortlistTable {
 }
 
 // Can never _ever_ add oneself as a contact
-func NewShortlist(me *Contact, target *KademliaID, callback NodeLookupCallback) *Shortlist {
+func NewShortlist(me *Contact, target *KademliaID, callback NodeLookupCallback, wantsValue uint) *Shortlist {
 	shortlist := &Shortlist{}
 	shortlist.target = target
 	shortlist.me = me
 	shortlist.items = make(map[string]*ShortlistItem) //make([]ShortlistItem, 20)
 	shortlist.dead = make(map[string]*ShortlistItem)
 	shortlist.callback = callback
+	shortlist.lookupValue = wantsValue
 	shortlist.lock = &sync.Mutex{}
 	return shortlist
 }
@@ -61,7 +63,6 @@ func NewShortlistItem(contact *Contact) *ShortlistItem {
 	si := &ShortlistItem{}
 	si.contact = contact
 	si.visited = 0
-	si.lock = &sync.Mutex{}
 	return si
 }
 
@@ -162,14 +163,44 @@ func (shortlist *Shortlist) HandleResponse(network *Network, sender *KademliaID,
 	defer shortlist.lock.Unlock()
 	shortlist.acertainLiving(sender) // TODO: Need to take any particular care about the sender being dead?
 	fmt.Println("Entered shortlist.HandleResponse.")
-	contacts := shortlist.parseResponseAsContacts(response)
-	if contacts == nil {
-		fmt.Println("Is this a node lookup, because this doesn't seem like a node lookup!")
-	} else {
-		fmt.Println("Adding contacts, there are " + strconv.Itoa(len(*contacts)) + " of them")
-		shortlist.addContacts(*contacts)
+	if hasValue(response) {
+		if shortlist.lookupValue == 1 {
+			shortlist.content = shortlist.parseResponseAsValue(response)
+		} else {
+			fmt.Println("Oh no. Received value response while looking for a node.")
+		}
+	}
+	if hasContacts(response) {
+		contacts := shortlist.parseResponseAsContacts(response)
+		if contacts == nil {
+			fmt.Println("Is this a node lookup, because this doesn't seem like a node lookup!")
+			fmt.Println("(contact list is EMPTY)")
+		} else {
+			fmt.Println("Adding contacts, there are " + strconv.Itoa(len(*contacts)) + " of them")
+			shortlist.addContacts(*contacts)
+		}
 	}
 	shortlist.doCleanup(network)
+}
+
+func hasValue(message *NetworkMessage.ValueResponse) bool {
+	switch message.Response.(type) {
+	case *NetworkMessage.ValueResponse_Nodes:
+		return false
+	case *NetworkMessage.ValueResponse_Content:
+		return true
+	}
+	return false
+}
+
+func hasContacts(message *NetworkMessage.ValueResponse) bool {
+	switch message.Response.(type) {
+	case *NetworkMessage.ValueResponse_Nodes:
+		return true
+	case *NetworkMessage.ValueResponse_Content:
+		return false
+	}
+	return false
 }
 
 func (shortlist *Shortlist) parseResponseAsContacts(message *NetworkMessage.ValueResponse) *[]Contact {
@@ -194,6 +225,17 @@ func (shortlist *Shortlist) parseResponseAsContacts(message *NetworkMessage.Valu
 	return &contacts
 }
 
+func (shortlist *Shortlist) parseResponseAsValue(message *NetworkMessage.ValueResponse) *[]byte {
+	fmt.Println("Prasing message contents for valueLookup in hopes of accomplishing something")
+	switch response := message.Response.(type) {
+	case *NetworkMessage.ValueResponse_Nodes:
+		fmt.Println("Called parseResponseAsValue with no value... check the calling code.")
+	case *NetworkMessage.ValueResponse_Content:
+		return &response.Content
+	}
+	return nil
+}
+
 func (shortlist *Shortlist) HandleTimeout(network *Network, sender *KademliaID) {
 	shortlist.lock.Lock()
 	defer shortlist.lock.Unlock()
@@ -216,7 +258,7 @@ func (shortlist *Shortlist) doCleanup(network *Network) {
 			}
 		}
 		if shortlist.callback != nil {
-			shortlist.callback(contacts)
+			shortlist.callback(contacts, shortlist.content)
 			shortlist.callback = nil
 		}
 	} else {
@@ -238,6 +280,10 @@ func (shortlist *Shortlist) LaunchRequests(network *Network) bool {
 //     but only if there is an unvisited contact in the list
 func (shortlist *Shortlist) launchRequests(network *Network) bool {
 	target := 3 - shortlist.countActiveRequests() // TODO: Add global for alpha
+	if shortlist.lookupValue == 1 && shortlist.content != nil {
+		fmt.Println("Value was found, so no new requests are launched")
+		target = 0
+	}
 	hasLaunched := false
 	for i := 0; i < target; i++ {
 		recipient := shortlist.getClosestUnvisited()
@@ -247,12 +293,20 @@ func (shortlist *Shortlist) launchRequests(network *Network) bool {
 		} else {
 			hasLaunched = true
 			fmt.Println("Sending FIND_* request to " + recipient.ID.String())
-			fmt.Println("TODO: Actually send the thing")
-			go network.SendFindNodeForNodeLookup(shortlist.target, recipient, shortlist)
-			//go network.SendFindContactMessage() // TODO: Make message for node lokoups
+			request := shortlist.getNetworkRequest(network)
+			go request(shortlist.target, recipient, shortlist)
 		}
 	}
 	return hasLaunched
+}
+
+// Returns either find node or find value, depending on what kind of request this is
+func (shortlist *Shortlist) getNetworkRequest(network *Network) func(*KademliaID, *Contact, *Shortlist) {
+	if shortlist.lookupValue == 0 {
+		return network.SendFindNodeForNodeLookup
+	} else {
+		return network.SendFindValueForValueLookup
+	}
 }
 
 func (shortlist *Shortlist) hasUnvisited() bool {
@@ -268,7 +322,7 @@ func (shortlist *Shortlist) hasUnvisited() bool {
 // 1. There are no unvisited nodes available AND
 // 2. There are no onging queries
 func (shortlist *Shortlist) hasFinished() bool {
-	return shortlist.countActiveRequests() == 0 && !shortlist.hasUnvisited()
+	return (shortlist.countActiveRequests() == 0 && !shortlist.hasUnvisited()) || (shortlist.lookupValue == 1 && shortlist.content != nil)
 }
 
 func (shortlist *Shortlist) countActiveRequests() int {

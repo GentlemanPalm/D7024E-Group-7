@@ -91,7 +91,7 @@ func (network *Network) handleReceive(buffer []byte, size int, addr string, err 
 
 func (network *Network) processPacket(packet *NetworkMessage.Packet) {
 	if packet.Origin != nil {
-		network.HandleOriginMessage(packet.Origin)
+		network.HandleOriginMessage(packet.Origin) // Do synchronously to prevent race conditions
 	} else {
 		fmt.Println("Received packet, but ORIGIN left blank. Bug?")
 	}
@@ -122,6 +122,20 @@ func (network *Network) processPacket(packet *NetworkMessage.Packet) {
 		go network.findTable.ProcessResult(packet.Nodes)
 	} else {
 		fmt.Println("Received packet, but FIND_NODE_RESPONSE left blank")
+	}
+
+	if packet.FindValue != nil {
+		if packet.Origin != nil {
+			go network.HandleFindValueMessage(packet.FindValue, packet.Origin.Address) // TODO: Implement
+		} else {
+			fmt.Println("Received packet, but FIND_VALUE was left blank")
+		}
+	}
+
+	if packet.Value != nil {
+		go network.findTable.ProcessResult(packet.Value)
+	} else {
+		fmt.Println("Received packet, but FIND_VALUE_RESPONSE was left blank")
 	}
 
 }
@@ -373,6 +387,28 @@ func (network *Network) HandleFindContactMessage(findNode *NetworkMessage.Find, 
 	sendDataToAddress(ensurePort(addr, "42042"), out)
 }
 
+// This is for handling FindContactMessages sent from other machines
+// This is NOT for handling the responses of requests sent by this node
+func (network *Network) HandleFindValueMessage(findNode *NetworkMessage.Find, addr string) {
+	//network.routingTable.AddContact(findNode.)
+	fmt.Println("Received unsolicited find VALUE message. I should give a proper response instead of printing this message.")
+	contacts := network.routingTable.FindClosestContacts(NewKademliaID(findNode.Hash), 20)
+	packet := network.createPacket()
+	packet.Value = &NetworkMessage.ValueResponse{
+		RandomId: findNode.RandomId,
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(findNode.RandomId, contacts)},
+	}
+
+	out, merr := proto.Marshal(packet)
+	if merr != nil {
+		fmt.Println("Error marshalling find_value RESPONSE packet")
+	}
+
+	fmt.Println("TODO: Actually fetch the value")
+
+	sendDataToAddress(ensurePort(addr, "42042"), out)
+}
+
 func createNodeResponse(randomID string, contacts []Contact) *NetworkMessage.NodeResponse {
 	response := &NetworkMessage.NodeResponse{}
 	response.RandomId = randomID
@@ -391,7 +427,7 @@ func createKademliaPair(contact *Contact) *NetworkMessage.KademliaPair {
 	}
 }
 
-type NodeLookupCallback func([]Contact)
+type NodeLookupCallback func([]Contact, *[]byte)
 
 func (network *Network) NodeLookup(id *KademliaID, onFinish NodeLookupCallback) {
 	// TODO
@@ -402,7 +438,7 @@ func (network *Network) NodeLookup(id *KademliaID, onFinish NodeLookupCallback) 
 	for i := range closest {
 		fmt.Println("Has contact: " + closest[i].ID.String())
 	}
-	shortlist := NewShortlist(network.Me(), id, onFinish)
+	shortlist := NewShortlist(network.Me(), id, onFinish, 0)
 	shortlist.AddContacts(closest)
 
 	// 2. Send FIND_NODE or FIND_VALUE requests to the three nodes
@@ -417,14 +453,32 @@ func (network *Network) NodeLookup(id *KademliaID, onFinish NodeLookupCallback) 
 			fmt.Println("One of the 'closest unvisited' was NIL")
 		}
 	}
+}
 
-	// 3. When the results of the requests arrive, update the table with
-	//     the results. Determine the new closest elements. Kick out
-	//      elements beyond the 'k' (20) closest elements.
-	//
-	// 4. For each request returning or timing out, pick off the next nearest
-	//     element, mark it as 'visited' and send new FIND_* request to it.
-	//      Mark elements which timed out as 'dead'. Keep dead nodes in sep table?
+func (network *Network) ValueLookup(id *KademliaID, onFinish NodeLookupCallback) {
+	// TODO
+	// 1. Create a shortlist with the three closest items of the id
+	//     determine which element is the closest element
+	fmt.Println("Entering value lookup for " + id.String())
+	closest := network.routingTable.FindClosestContacts(id, 3) // TODO: Use alpha
+	for i := range closest {
+		fmt.Println("Has contact: " + closest[i].ID.String())
+	}
+	shortlist := NewShortlist(network.Me(), id, onFinish, 1)
+	shortlist.AddContacts(closest)
+
+	// 2. Send FIND_NODE or FIND_VALUE requests to the three nodes
+	//     mark the items as visited in the table.
+
+	for i := 0; i < 3; i++ {
+		contact := shortlist.GetClosestUnvisited()
+		if contact != nil {
+			fmt.Println("Sending initial message for VALUE lookup of " + id.String() + " to " + contact.ID.String())
+			network.SendFindValueForValueLookup(id, contact, shortlist)
+		} else {
+			fmt.Println("One of the 'closest unvisited' was NIL")
+		}
+	}
 }
 
 func (network *Network) SendFindNodeForNodeLookup(key *KademliaID, recipient *Contact, shortlist *Shortlist) {
@@ -450,6 +504,31 @@ func (network *Network) sendFindNodeForNodeLookup(key *KademliaID, recipient *Co
 	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
+func (network *Network) SendFindValueForValueLookup(key *KademliaID, recipient *Contact, shortlist *Shortlist) {
+	network.sendFindValueForValueLookup(key, recipient, shortlist)
+}
+
+// (hash string, recipient *Contact, onData OnDataCallback, onContacts OnContactsCallback, onTimeout onTimeout func(*KademliaID, *KademliaID)) {
+
+func (network *Network) sendFindValueForValueLookup(key *KademliaID, recipient *Contact, shortlist *Shortlist) {
+	packet := network.createPacket()
+	randomID := network.findTable.MakeRequest(recipient.ID, network.handleNodeLookupTimeout, network.handleNodeLookupResponse)
+
+	network.nodeLookupTable.Put(randomID, shortlist)
+
+	packet.FindValue = &NetworkMessage.Find{
+		RandomId: randomID.String(),
+		Hash:     key.String(),
+	}
+
+	out, merr := proto.Marshal(packet)
+	if merr != nil {
+		fmt.Println("Error marshalling find_value packet for vlaue lookup")
+	}
+
+	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
+}
+
 // onTimeout func(*KademliaID), onResponse func(*KademliaID, *NetworkMessage.ValueResponse))
 
 /*
@@ -457,7 +536,7 @@ func (network *Network) sendFindNodeForNodeLookup(key *KademliaID, recipient *Co
  * */
 func (network *Network) handleNodeLookupResponse(sender *KademliaID, message *NetworkMessage.ValueResponse) {
 	shortlist := network.nodeLookupTable.Pop(NewKademliaID(message.RandomId))
-	fmt.Println("HANDLEING NOED LOOEAPP RESSPONSE")
+	fmt.Println("Handline Node/Value lookup response from " + sender.String())
 	if shortlist != nil {
 		shortlist.HandleResponse(network, sender, message)
 	} else {
@@ -476,9 +555,63 @@ func (network *Network) handleNodeLookupTimeout(sender *KademliaID, randomID *Ka
 
 }
 
+type OnDataCallback func(*KademliaID, []byte)
+type OnContactsCallback func(*KademliaID, []Contact)
+
+type callbackContainer struct {
+	onData     OnDataCallback
+	onContacts OnContactsCallback
+	me         *Contact
+}
+
+func (cbc *callbackContainer) handleFindDataResponse(sender *KademliaID, message *NetworkMessage.ValueResponse) {
+	fmt.Println("(handleFindDataResponse) Received data from " + sender.String() + " regarding " + message.RandomId)
+	switch response := message.Response.(type) {
+	case *NetworkMessage.ValueResponse_Nodes:
+		fmt.Println("Has been informed about the following nodes: ")
+		nodes := response.Nodes.Nodes
+		contacts := make([]Contact, len(nodes))
+		for i := range nodes { // TODO: Make it work for FIND_VALUE
+			fmt.Println(nodes[i].KademliaId + " @ " + nodes[i].Address)
+			kID := NewKademliaID(nodes[i].KademliaId)
+			if !cbc.me.ID.Equals(kID) {
+				contacts[i] = NewContact(kID, nodes[i].Address)
+			} else {
+				fmt.Println("But that's me! I can't add myself now, can I?")
+			}
+		}
+		cbc.onContacts(sender, contacts)
+	case *NetworkMessage.ValueResponse_Content:
+		fmt.Println("Received the actual data!")
+		cbc.onData(sender, response.Content)
+	}
+}
+
 // FIND_VALUE RPC
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindDataMessage(hash string, recipient *Contact, onData OnDataCallback, onContacts OnContactsCallback, onTimeout func(*KademliaID, *KademliaID)) {
+	cbc := &callbackContainer{}
+	cbc.onData = onData
+	cbc.onContacts = onContacts
+	cbc.me = network.Me()
+	network.sendFindDataMessage(NewKademliaID(hash), recipient, onTimeout, cbc)
+}
+
+func (network *Network) sendFindDataMessage(key *KademliaID, recipient *Contact, onTimeout func(*KademliaID, *KademliaID), cbc *callbackContainer) {
 	// TODO
+	packet := network.createPacket()
+	randomID := network.findTable.MakeRequest(recipient.ID, onTimeout, cbc.handleFindDataResponse)
+
+	packet.FindValue = &NetworkMessage.Find{
+		RandomId: randomID.String(),
+		Hash:     key.String(),
+	}
+
+	out, merr := proto.Marshal(packet)
+	if merr != nil {
+		fmt.Println("Error marshalling find_node packet")
+	}
+
+	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
 // STORE RPC

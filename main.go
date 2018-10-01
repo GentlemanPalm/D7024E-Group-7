@@ -50,6 +50,7 @@ func main() {
 	go testFindNode(me.ID, network, 14)
 	//go testFindNode(me.ID, network, 25)
 	go testNodeLookup(me.ID, network, 20)
+	go testValueLookup(me.ID, network, 25)
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -93,7 +94,13 @@ func testNodeLookup(id *d7024e.KademliaID, network *d7024e.Network, delay int) {
 	network.NodeLookup(id, printContacts)
 }
 
-func printContacts(contacts []d7024e.Contact) {
+func testValueLookup(id *d7024e.KademliaID, network *d7024e.Network, delay int) {
+	time.Sleep(time.Duration(delay) * time.Second)
+	fmt.Println("--> WOOO!!! Value Lookup!!! <<--")
+	network.ValueLookup(id, printContacts)
+}
+
+func printContacts(contacts []d7024e.Contact, notUsed *[]byte) {
 	fmt.Println("Holy crap. NodeLookup finished!")
 	for i := range contacts {
 		if contacts[i].ID != nil {
@@ -101,6 +108,9 @@ func printContacts(contacts []d7024e.Contact) {
 		} else {
 			fmt.Println("Had a NIL value for one of contacts")
 		}
+	}
+	if notUsed != nil {
+		fmt.Println("Actually Received a value!!!!")
 	}
 }
 
