@@ -28,6 +28,22 @@ func (bucket *bucket) AddContact(contact Contact) {
 	bucket.addContact(contact)
 }
 
+func (bucket *bucket) ReplaceContact(old *KademliaID, replacement *Contact) {
+	bucket.lock.Lock()
+	defer bucket.lock.Unlock()
+
+	for e := bucket.list.Front(); e != nil; e = e.Next() {
+		contact := e.Value.(Contact)
+
+		if (contact).ID.Equals(old) {
+			bucket.list.Remove(e)
+			break
+		}
+	}
+
+	bucket.addContact(*replacement)
+}
+
 // AddContact adds the Contact to the front of the bucket
 // or moves it to the front of the bucket if it already existed
 func (bucket *bucket) addContact(contact Contact) {
