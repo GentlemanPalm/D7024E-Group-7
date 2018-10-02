@@ -20,7 +20,7 @@ import (
 type row struct {
 	randomID   *KademliaID // The rand
 	kademliaID *KademliaID //
-} // 15+8+9+1+3+6+1+9+9
+}
 
 type PingTable struct {
 	rows []row

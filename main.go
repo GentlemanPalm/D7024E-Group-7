@@ -50,7 +50,7 @@ func main() {
 	go testFindNode(me.ID, network, 14)
 	//go testFindNode(me.ID, network, 25)
 	go testNodeLookup(me.ID, network, 20)
-	go testValueLookup(me.ID, network, 25)
+	//go testValueLookup(me.ID, network, 25)
 	network.Listen(sport)
 	//go listenForConnections()
 

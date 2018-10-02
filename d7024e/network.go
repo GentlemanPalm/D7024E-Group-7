@@ -17,6 +17,7 @@ type Network struct {
 	pingTable       *PingTable
 	findTable       *FindTable
 	nodeLookupTable *NodeLookupTable
+	dw              DataWriter
 }
 
 func NewNetwork(routingTable *RoutingTable) *Network {
@@ -26,6 +27,7 @@ func NewNetwork(routingTable *RoutingTable) *Network {
 	nw.pingTable = NewPingTable() // TODO: Create dependency injection
 	nw.findTable = NewFindTable()
 	nw.nodeLookupTable = NewNodeLookupTable()
+	nw.dw = &NetworkDataWriter{}
 	return nw
 }
 
@@ -61,10 +63,6 @@ func (network *Network) Listen(port int) {
 		//simple write
 		//pc.WriteTo([]byte("Hello from client"), net.ResolveUDPAddr("udp", ":2000"))
 	}
-}
-
-func Listen(ip string, port int) {
-	// TODO
 }
 
 func (network *Network) handleReceive(buffer []byte, size int, addr string, err error) {
@@ -240,7 +238,15 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	fmt.Println("Got the PONG message for " + pongMessage.KademliaId + " with random ID " + pongMessage.RandomId)
 }
 
-func sendDataToAddress(address string, data []byte) {
+// Generic interface for writing data
+type DataWriter interface {
+	sendDataToAddress(string, []byte)
+}
+
+type NetworkDataWriter struct {
+}
+
+func (ndw *NetworkDataWriter) sendDataToAddress(address string, data []byte) {
 	saddr, e0 := net.ResolveUDPAddr("udp", address)
 	if e0 != nil {
 		fmt.Println(e0)
@@ -285,7 +291,7 @@ func (network *Network) SendPongMessage(pongMessage *NetworkMessage.Pong, addres
 		//fmt.Println("Marshalled data is " + string(out[:]))
 		fmt.Println("RandomId is " + pongMessage.RandomId)
 		fmt.Println("Sending PONG to " + address)
-		sendDataToAddress(ensurePort(address, "42042"), out)
+		network.dw.sendDataToAddress(ensurePort(address, "42042"), out)
 	}
 
 }
@@ -319,7 +325,7 @@ func (network *Network) sendPingPacket(randomID *KademliaID, contact *Contact) {
 		fmt.Println("Error marshalling ping packet")
 	}
 
-	sendDataToAddress(contact.Address, out)
+	network.dw.sendDataToAddress(contact.Address, out)
 }
 
 // FIND_NODE RPC
@@ -342,7 +348,7 @@ func (network *Network) sendFindContactMessage(key *KademliaID, recipient *Conta
 		fmt.Println("Error marshalling find_node packet")
 	}
 
-	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
+	network.dw.sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
 func (network *Network) handleFindContactResponse(recipient *KademliaID, message *NetworkMessage.ValueResponse) {
@@ -384,7 +390,7 @@ func (network *Network) HandleFindContactMessage(findNode *NetworkMessage.Find, 
 		fmt.Println("Error marshalling find_node RESPONSE packet")
 	}
 
-	sendDataToAddress(ensurePort(addr, "42042"), out)
+	network.dw.sendDataToAddress(ensurePort(addr, "42042"), out)
 }
 
 // This is for handling FindContactMessages sent from other machines
@@ -406,7 +412,7 @@ func (network *Network) HandleFindValueMessage(findNode *NetworkMessage.Find, ad
 
 	fmt.Println("TODO: Actually fetch the value")
 
-	sendDataToAddress(ensurePort(addr, "42042"), out)
+	network.dw.sendDataToAddress(ensurePort(addr, "42042"), out)
 }
 
 func createNodeResponse(randomID string, contacts []Contact) *NetworkMessage.NodeResponse {
@@ -501,7 +507,7 @@ func (network *Network) sendFindNodeForNodeLookup(key *KademliaID, recipient *Co
 		fmt.Println("Error marshalling find_node packet")
 	}
 
-	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
+	network.dw.sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
 func (network *Network) SendFindValueForValueLookup(key *KademliaID, recipient *Contact, shortlist *Shortlist) {
@@ -526,7 +532,7 @@ func (network *Network) sendFindValueForValueLookup(key *KademliaID, recipient *
 		fmt.Println("Error marshalling find_value packet for vlaue lookup")
 	}
 
-	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
+	network.dw.sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
 // onTimeout func(*KademliaID), onResponse func(*KademliaID, *NetworkMessage.ValueResponse))
@@ -611,7 +617,7 @@ func (network *Network) sendFindDataMessage(key *KademliaID, recipient *Contact,
 		fmt.Println("Error marshalling find_node packet")
 	}
 
-	sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
+	network.dw.sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
 // STORE RPC

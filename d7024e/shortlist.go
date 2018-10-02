@@ -54,6 +54,7 @@ func NewShortlist(me *Contact, target *KademliaID, callback NodeLookupCallback, 
 	shortlist.items = make(map[string]*ShortlistItem) //make([]ShortlistItem, 20)
 	shortlist.dead = make(map[string]*ShortlistItem)
 	shortlist.callback = callback
+	shortlist.content = nil
 	shortlist.lookupValue = wantsValue
 	shortlist.lock = &sync.Mutex{}
 	return shortlist
