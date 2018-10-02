@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"math/rand"
 
 	"net"
 	"strings"
@@ -42,14 +43,16 @@ func main() {
 	//fmt.Println("\n",d7024e.Hash(str))
 
 	
-
+	rand.Seed(int64(time.Now().Nanosecond()))
 	me := d7024e.NewContact(d7024e.NewRandomKademliaID(), getIaddr())
+	fmt.Println("My ID")
+	fmt.Println(me.ID)
 	routingTable := d7024e.NewRoutingTable(me)
 	network := d7024e.NewNetwork(routingTable)
 
 	sport, _ := strconv.Atoi(*port)
 	go send2(me.ID, network)
-	d7024e.Republish(network)
+	go testRepublish(me.ID,network)
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -85,6 +88,9 @@ func getIaddr() string {
 		}
 	}
 	return iaddr
+}
+func testRepublish (kademliaId *d7024e.KademliaID, network *d7024e.Network){
+	network.Republish(kademliaId)
 }
 
 func send2(kademliaId *d7024e.KademliaID, network *d7024e.Network) {

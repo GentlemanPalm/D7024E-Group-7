@@ -1,21 +1,22 @@
 package d7024e
 
 import (
-	"fmt"
+	//"fmt"
 	"time"
 )
 
-func Republish(network *Network) {
-	//30 sekunder för demo.
+func (network *Network) Republish(id *KademliaID) {
+	//20 sekunder för demo.
 	for {
-    	time.Sleep(10 * time.Second)
-    	go republish(network)
+    	time.Sleep(20 * time.Second)
+    	go network.republish(id)
   }
 }
 
-func republish(network *Network) {
-  kClosest := network.routingTable.FindClosestContacts(network.routingTable.Me().ID, GetGlobals().K)
-  fmt.Printf("\n" + "Tjoooohoooo!1")
-  fmt.Printf("\n")
-  fmt.Printf("%v", kClosest)
+func (network *Network) republish(id *KademliaID) {
+
+  kClosest := network.routingTable.FindClosestContacts(id, GetGlobals().K)
+  for i := range kClosest { 
+  	network.SendStoreMessage(network.CreateStoreMessage(false, "d7024e/text.txt"), kClosest[i].Address)
+  }
 }
