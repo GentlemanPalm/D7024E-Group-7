@@ -62,4 +62,5 @@ message Packet {
   Ping ping = 1;
   Pong pong = 2;
   Store store = 3;
+  StoreResponse StoreResponse = 4;
 }

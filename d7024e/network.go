@@ -18,6 +18,8 @@ import (
 type Network struct {
 	routingTable *RoutingTable
 	pingTable    *PingTable
+	rpcTable     *RpcTable
+	storeTable   *StoreTable
 }
 
 func NewNetwork(routingTable *RoutingTable) *Network {
@@ -25,7 +27,8 @@ func NewNetwork(routingTable *RoutingTable) *Network {
 	nw.routingTable = routingTable
 	nw.routingTable.Me().Address = getIaddr()
 	nw.pingTable = NewPingTable()
-	nw.storeTable = NewPingTable()
+	nw.rpcTable = NewRpcTable()
+	nw.storeTable = NewStoreTable()
 	return nw
 }
 
@@ -153,41 +156,7 @@ func (network *Network) CreatePongMessage(pingMessage *NetworkMessage.Ping) *Net
 	return pong
 }
 
-func (network *Network) CreateStoreMessage(filePath string) *NetworkMessage.Store {
 
-	randomID := NewRandomKademliaID()
-		
-	content, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Store message created, with hash:" + filePath)
-	store := &NetworkMessage.Store{
-		RandomId:   randomID,
-		KademliaId: network.routingTable.Me().ID.String(),
-		Address:    network.routingTable.Me().Address,
-		Hash: Hash(filePath),
-		Content:    content,
-	}
-	return store
-}
-
-func (network *Network) CreateStoreResponseMessage(randomID *KademliaID) *NetworkMessage.StoreResponse {
-		
-	content, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("StoreResponse message created")
-	store := &NetworkMessage.StoreResponse{
-		RandomId:   randomID,
-		KademliaId: network.routingTable.Me().ID.String(),
-		Address:    network.routingTable.Me().Address,
-	}
-	return store
-}
 
 func (network *Network) HandlePingTimeout(randomID *KademliaID, replacement *Contact) {
 	time.Sleep(1 * time.Second)
@@ -225,40 +194,6 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 
 }
 
-func (network *Network) HandleStoreMessage(storeMessage *NetworkMessage.Store) {
-	//Recieve data and filename
-	randomID := storeMessage.RandomId
-	kademliaID := storeMessage.KademliaId
-	address := pongMessage.Address
-	data := storeMessage.Content
-	fileName := storeMessage.Hash
-
-	fmt.Println("Recieved store message, with filename:" + fileName)
-	filePath := "Files/" + fileName
-    err := ioutil.WriteFile(filePath, data, 0644)
-    if err != nil {
-		log.Fatal(err)
-	}
-	//Test for reading stored file
-	content, err2 := ioutil.ReadFile(filePath)
-	if err2 != nil {
-		log.Fatal(err2)
-	}
-
-	fmt.Printf("File contents: %s", content)
-
-	RandomId:   randomID,
-		KademliaId: network.routingTable.Me().ID.String(),
-		Address:    network.routingTable.Me().Address,
-
-	network.SendStoreResponseMessage(network.CreateStoreResponseMessage(randomID), kClosest[i].Address)
-}
-
-func (network *Network) HandleStoreResponseMessage(storeMessage *NetworkMessage.StoreResponse) {
-	//Recieve data and filename
-	data := storeMessage.Content
-	fileName := storeMessage.Hash
-}
 
 func sendDataToAddress(address string, data []byte) {
 	saddr, e0 := net.ResolveUDPAddr("udp", address)
@@ -352,6 +287,38 @@ func (network *Network) SendFindDataMessage(hash string) {
 }
 
 // STORE RPC
+
+func (network *Network) CreateStoreMessage(filePath string) *NetworkMessage.Store {
+
+	randomID := NewRandomKademliaID()
+		
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Store message created, with hash:" + filePath + "With random id: " + randomID.String())
+	store := &NetworkMessage.Store{
+		RandomId:   randomID.String(),
+		KademliaId: network.routingTable.Me().ID.String(),
+		Address:    network.routingTable.Me().Address,
+		Hash: 			Hash(filePath),
+		Content:    content,
+	}
+	return store
+}
+
+func (network *Network) CreateStoreResponseMessage(randomID *KademliaID) *NetworkMessage.StoreResponse {
+
+	fmt.Println("StoreResponse message created")
+	store := &NetworkMessage.StoreResponse{
+		RandomId:   randomID.String(),
+		KademliaId: network.routingTable.Me().ID.String(),
+		Address:    network.routingTable.Me().Address,
+	}
+	return store
+}
+
 func (network *Network) SendStoreMessage(storeMessage *NetworkMessage.Store, address string) {
 
 	packet := createPacket()
@@ -362,7 +329,7 @@ func (network *Network) SendStoreMessage(storeMessage *NetworkMessage.Store, add
 	if merr != nil {
 		fmt.Println("Error marshaling store packet")
 	} else {
-		//fmt.Println("Marshalled data is " + string(out[:]))
+		network.rpcTable.Push(NewKademliaID(storeMessage.RandomId))
 		fmt.Println("Store adress: " + address)
 		sendDataToAddress(ensurePort(address, "42042"), out)
 	}
@@ -376,13 +343,48 @@ func (network *Network) SendStoreResponseMessage(storeMessage *NetworkMessage.St
 	
 	out, merr := proto.Marshal(packet)
 	if merr != nil {
-		fmt.Println("Error marshaling store packet")
+		fmt.Println("Error marshaling storeresponse packet")
 	} else {
 		//fmt.Println("Marshalled data is " + string(out[:]))
-		fmt.Println("Store adress: " + address)
+		fmt.Println("Sending StoreResponse with adress: " + address + "With random id: " + storeMessage.RandomId)
 		sendDataToAddress(ensurePort(address, "42042"), out)
 	}
 }
+
+func (network *Network) HandleStoreMessage(storeMessage *NetworkMessage.Store) {
+	//Recieve data and filename
+	randomID := storeMessage.RandomId
+	kademliaID := storeMessage.KademliaId
+	address := storeMessage.Address
+	data := storeMessage.Content
+	fileName := storeMessage.Hash
+
+	fmt.Println("Recieved store message, with filename:" + fileName + "With random id: " + randomID)
+	filePath := "Files/" + fileName
+    err := ioutil.WriteFile(filePath, data, 0644)
+    if err != nil {
+		log.Fatal(err)
+	}
+
+	network.storeTable.Push(NewKademliaID(kademliaID), fileName , filePath)
+
+	network.SendStoreResponseMessage(network.CreateStoreResponseMessage(NewKademliaID(randomID)), address)
+}
+
+func (network *Network) HandleStoreResponseMessage(storeMessage *NetworkMessage.StoreResponse) {
+
+	row := network.rpcTable.Pop(NewKademliaID(storeMessage.RandomId))
+	//var contact Contact
+	if row == nil {
+		fmt.Println("Received StoreResponse with random id " + storeMessage.RandomId + " but nothing was found in the rpcTable")
+	} else {
+		fmt.Println("!!!!SUCCESS!!! StoreResponse with random id " + storeMessage.RandomId)
+	}
+	// Does this simply work?? Answer is no my friend!
+	fmt.Println("Recieved StoreResponseMessage from" + storeMessage.KademliaId +" With randomID " + storeMessage.RandomId + " From address: " + storeMessage.Address )
+	
+}
+
 
 
 

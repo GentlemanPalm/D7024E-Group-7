@@ -13,6 +13,9 @@ docker image prune
 Enter container:
 docker exec -ti <container id> bash
 
+See logs for container:
+docker logs <container id>
+
 
 
 
