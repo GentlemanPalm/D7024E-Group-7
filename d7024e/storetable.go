@@ -42,6 +42,7 @@ func (table *StoreTable) Push(content []byte, hash string, republish bool, pin b
 		filePath := "Files/" + hash
 		err := ioutil.WriteFile(filePath, content, 0644)
 		if err != nil {
+			fmt.Println("Push write file did not work " + hash)
 			log.Fatal(err)
 		} else {
 			fmt.Println("Received file with hash " + hash)

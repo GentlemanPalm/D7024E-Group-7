@@ -14,7 +14,7 @@ func Hash(arg string) string {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("File contents: %s", content)
+	fmt.Println("File contents: %s", content)
 
 	 h := sha1.New()
 	 h.Write([]byte(arg))

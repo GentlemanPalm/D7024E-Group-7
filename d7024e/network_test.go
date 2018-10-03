@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
+	"io/ioutil"
+	"log"
+	"os"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -247,3 +249,52 @@ func (pc *PacketContainer) findNodeCallback(packet *NetworkMessage.Packet) {
 func TestFindValue(t *testing.T) {
 	// TODO: After FIND_VALUE is implemented and Test_FIND_NODE works
 }
+//Store RPC
+func TestStore(t *testing.T) {
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	network.dw = mdw
+
+	filename := "text.txt"
+	hash := Hash(filename)
+
+	os.Mkdir("Files", 0644)
+	filePath := "Files/" + hash 
+	content, err1 := ioutil.ReadFile(filename)
+		if err1 != nil {
+			log.Fatal(err1)
+	}
+
+	err2 := ioutil.WriteFile(filePath, content, 0644)
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+	//Test
+	store := &NetworkMessage.Store{}
+
+	fmt.Println("File contents: %s", content)
+
+	store.RandomId = NewRandomKademliaID().String()
+	store.KademliaId = NewRandomKademliaID().String()
+	store.Address = "127.0.0.1"
+	store.Hash = hash
+	store.Content = content
+	store.Pin = true
+	network.HandleStoreMessage(store)
+	if mdw.nrofTimesCalled != 1 {
+		t.Error("Receiving a store did NOT result in a pong message being sent")
+	} else {
+		fmt.Println("Stor messages results in storeResponse")
+	}
+}
+/*func TestHandleStore(t *testing.T) {
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	
+}*/
+
+
