@@ -16,16 +16,48 @@ type storepath struct {
 	pin       bool
 }
 
+type FileHandler interface {
+	ReadFile(string) []byte
+	WriteFile(string, []byte) bool
+}
+
 type StoreTable struct {
 	rows map[string]*storepath
+	fh   FileHandler
 	lock *sync.Mutex
 }
 
 func NewStoreTable() *StoreTable {
 	table := &StoreTable{}
 	table.rows = make(map[string]*storepath)
+	table.fh = &defaultFileHandler{}
 	table.lock = &sync.Mutex{}
 	return table
+}
+
+type defaultFileHandler struct {
+}
+
+func (fh *defaultFileHandler) ReadFile(hash string) []byte {
+	content, err := ioutil.ReadFile("Files/" + hash)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return content
+}
+
+func (fh *defaultFileHandler) WriteFile(hash string, content []byte) bool {
+	filePath := "Files/" + hash
+	err := ioutil.WriteFile(filePath, content, 0644)
+	if err != nil {
+		fmt.Println("Push write file did not work " + hash)
+		return false
+	} else {
+		fmt.Println("Received file with hash " + hash)
+		return true
+	}
+	return false
 }
 
 func (table *StoreTable) Push(content []byte, hash string, republish bool, pin bool) bool {
@@ -38,17 +70,7 @@ func (table *StoreTable) Push(content []byte, hash string, republish bool, pin b
 		return true
 	} else {
 		table.rows[hash] = rpc
-
-		filePath := "Files/" + hash
-		err := ioutil.WriteFile(filePath, content, 0644)
-		if err != nil {
-			fmt.Println("Push write file did not work " + hash)
-			log.Fatal(err)
-		} else {
-			fmt.Println("Received file with hash " + hash)
-			return true
-		}
-		return false
+		return table.fh.WriteFile(hash, content)
 	}
 }
 
@@ -60,12 +82,7 @@ func (table *StoreTable) Get(hash string) []byte {
 	if item == nil {
 		return nil
 	}
-	content, err := ioutil.ReadFile("Files/" + hash)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return content
+	return table.fh.ReadFile(hash)
 }
 
 func (st *StoreTable) Expire() {
@@ -122,11 +139,7 @@ func (table *StoreTable) Delete(hash string) []byte {
 	if item == nil {
 		return nil
 	}
-	content, err := ioutil.ReadFile("Files/" + hash)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	content := table.fh.ReadFile(hash)
 	delete(table.rows, hash)
 	return content
 }
