@@ -327,16 +327,98 @@ func onNodeLookupFinish(contacts []Contact, data *[]byte) {
 	}
 }
 
+func TestValueLookup(t *testing.T) {
+	network := mockNetwork()
+
+	mfh := &mockFileHandler{}
+	mfh.kvt = make(map[string][]byte)
+	network.storeTable.fh = mfh
+
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	for i := 0; i < nrofContacts; i++ {
+		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
+		network.routingTable.AddContact(contact)
+	}
+
+	target := NewRandomKademliaID()
+
+	network.storeTable.Push(findValueContent, target.String(), false, true)
+
+	network.ValueLookup(target, onValueLookupFinish)
+
+	//time.Sleep(time.Duration(1) * time.Second)
+
+	//key := sentPacket.packet.FindNode.Hash
+
+	contacts := make([]Contact, 20)
+	for i := 0; i < len(contacts); i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
+	}
+
+	if mdw.nrofTimesCalled != 3 { // TODO: Use alpha
+		t.Errorf("(NodeLookup) Error: Expected 3 packets sent from NodeLookup, received %d", mdw.nrofTimesCalled)
+	}
+
+	for i := 0; i < nrofContacts; i++ {
+		//time.Sleep(time.Duration(1) * time.Second / 2)
+		responseID := sentPacket.packet.FindValue.RandomId
+		nodes := &NetworkMessage.ValueResponse{
+			RandomId: responseID,
+			Response: &NetworkMessage.ValueResponse_Content{findValueContent},
+			//&NetworkMessage.ValueResponse_Nodes{createNodeResponse(responseID, contacts)},
+		}
+		network.findTable.ProcessResult(nodes)
+		//network.handleFindContactResponse(recipient.ID, nodes)
+	}
+	time.Sleep(time.Duration(7) * time.Second)
+
+	network.ValueLookup(NewRandomKademliaID(), onValueLookupNotFound)
+
+	for i := 0; i < nrofContacts; i++ {
+		//time.Sleep(time.Duration(1) * time.Second / 2)
+		responseID := sentPacket.packet.FindValue.RandomId
+		nodes := &NetworkMessage.ValueResponse{
+			RandomId: responseID,
+			Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(responseID, contacts)},
+		}
+		network.findTable.ProcessResult(nodes)
+		//network.handleFindContactResponse(recipient.ID, nodes)
+	}
+	time.Sleep(time.Duration(15) * time.Second)
+}
+
+func onValueLookupFinish(contacts []Contact, data *[]byte) {
+	if data == nil {
+		fmt.Println("[ERR] (ValueLookup) Error: Data response expected for ValueLookup")
+	} else {
+		fmt.Println("[OK] Otherwise, ValueLookup seems OK.")
+	}
+}
+
+func onValueLookupNotFound(contacts []Contact, data *[]byte) {
+	missing := 0
+	for i := range contacts {
+		if contacts[i].ID == nil {
+			missing++
+		}
+	}
+	if data == nil {
+		fmt.Println("[OK] (ValueLookup) node response is fine for value not found. " + strconv.Itoa(missing))
+	} else {
+		fmt.Println("[ERR] (ValueLookup) Should not receive data for random lookup")
+	}
+}
+
 type PacketContainer struct {
 	packet *NetworkMessage.Packet
 }
 
 func (pc *PacketContainer) findNodeCallback(packet *NetworkMessage.Packet) {
 	pc.packet = packet
-}
-
-func TestFindValue(t *testing.T) {
-	// TODO: After FIND_VALUE is implemented and Test_FIND_NODE works
 }
 
 //Store RPC
