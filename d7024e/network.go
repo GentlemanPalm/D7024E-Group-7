@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	
-	
 
 	"github.com/golang/protobuf/proto"
 )
@@ -28,13 +26,13 @@ func NewNetwork(routingTable *RoutingTable) *Network {
 	nw := &Network{}
 	nw.routingTable = routingTable
 	nw.routingTable.Me().Address = getIaddr()
-<<<<<<< HEAD
 	nw.pingTable = NewPingTable() // TODO: Create dependency injection
 	nw.findTable = NewFindTable()
 	nw.nodeLookupTable = NewNodeLookupTable()
 	nw.dw = &NetworkDataWriter{}
 	nw.rpcTable = NewRpcTable()
 	nw.storeTable = NewStoreTable()
+	go nw.storeTable.Expire()
 	return nw
 }
 
@@ -42,7 +40,7 @@ func (network *Network) Me() *Contact {
 	return network.routingTable.Me()
 }
 
-func (network *Network) GetStoreTable() *StoreTable{
+func (network *Network) GetStoreTable() *StoreTable {
 	return network.storeTable
 }
 
@@ -205,16 +203,14 @@ func getIaddr() string {
 func (network *Network) HandlePingMessage(pingMessage *NetworkMessage.Ping) {
 	fmt.Println("Received Ping Message. I should update the buckets here at some point")
 	contact := NewContact(NewKademliaID(pingMessage.KademliaId), pingMessage.Address)
-<<<<<<< HEAD
+
 	if !contact.ID.Equals(network.Me().ID) {
 		network.routingTable.AddContact(contact)
 		fmt.Println("Added " + pingMessage.KademliaId + " @ " + pingMessage.Address + " as a contact from ping")
 	} else {
 		fmt.Println("Received oneself as parameter to ping message. Decided against adding it to contact list.")
 	}
-=======
-	network.routingTable.AddContact(contact)
->>>>>>> origin/Marcus
+
 	network.SendPongMessage(network.CreatePongMessage(pingMessage), pingMessage.Address)
 }
 
@@ -226,8 +222,6 @@ func (network *Network) CreatePongMessage(pingMessage *NetworkMessage.Ping) *Net
 	}
 	return pong
 }
-
-
 
 func (network *Network) HandlePingTimeout(randomID *KademliaID, replacement *Contact) {
 	time.Sleep(time.Duration(1) * time.Second)
@@ -257,7 +251,6 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	} else {
 		contact = NewContact(row.kademliaID, pongMessage.Address)
 	}
-<<<<<<< HEAD
 	// Does this simply work??
 	if !network.Me().ID.Equals(contact.ID) {
 		network.routingTable.AddContact(contact)
@@ -276,19 +269,6 @@ type NetworkDataWriter struct {
 }
 
 func (ndw *NetworkDataWriter) sendDataToAddress(address string, data []byte) {
-=======
-	// Does this simply work?? Answer is no my friend!
-	network.routingTable.AddContact(contact)
-	fmt.Println("Got the PONG message for " + pongMessage.KademliaId + " with random ID " + pongMessage.RandomId)
-
-	//Send store when recieving pong, test only.
-	//network.SendStoreMessage(network.CreateStoreMessage("d7024e/text.txt"), pongMessage.Address)
-
-}
-
-
-func sendDataToAddress(address string, data []byte) {
->>>>>>> origin/Marcus
 	saddr, e0 := net.ResolveUDPAddr("udp", address)
 	if e0 != nil {
 		fmt.Println(e0)
@@ -312,15 +292,10 @@ func sendDataToAddress(address string, data []byte) {
 	fmt.Println("Wrote a packet of data")
 }
 
-<<<<<<< HEAD
 func (network *Network) createPacket() *NetworkMessage.Packet {
 	packet := &NetworkMessage.Packet{}
 	packet.Origin = &NetworkMessage.KademliaPair{network.Me().ID.String(), network.Me().Address}
 	return packet
-=======
-func createPacket() *NetworkMessage.Packet {
-	return &NetworkMessage.Packet{}
->>>>>>> origin/Marcus
 }
 
 func ensurePort(address string, port string) string {
@@ -355,37 +330,24 @@ func (network *Network) SendPingMessageWithReplacement(contact *Contact, replace
 	network.sendPingPacket(randomID, contact)
 }
 
-<<<<<<< HEAD
 func (network *Network) createPingPacket(randomID *KademliaID) *NetworkMessage.Ping {
 	return &NetworkMessage.Ping{
-=======
-func (network *Network) sendPingPacket(randomID *KademliaID, contact *Contact) {
-	packet := createPacket()
-	packet.Ping = &NetworkMessage.Ping{
->>>>>>> origin/Marcus
 		RandomId:   randomID.String(),
 		KademliaId: network.routingTable.Me().ID.String(),
 		Address:    network.routingTable.Me().Address,
 	}
-<<<<<<< HEAD
 }
 
 func (network *Network) sendPingPacket(randomID *KademliaID, contact *Contact) {
 	packet := network.createPacket()
 	packet.Ping = network.createPingPacket(randomID)
-=======
->>>>>>> origin/Marcus
 
 	out, merr := proto.Marshal(packet)
 	if merr != nil {
 		fmt.Println("Error marshalling ping packet")
 	}
 
-<<<<<<< HEAD
 	network.dw.sendDataToAddress(contact.Address, out)
-=======
-	sendDataToAddress(contact.Address, out)
->>>>>>> origin/Marcus
 }
 
 // FIND_NODE RPC
@@ -460,17 +422,25 @@ func (network *Network) HandleFindValueMessage(findNode *NetworkMessage.Find, ad
 	fmt.Println("Received unsolicited find VALUE message. I should give a proper response instead of printing this message.")
 	contacts := network.routingTable.FindClosestContacts(NewKademliaID(findNode.Hash), 20)
 	packet := network.createPacket()
-	packet.Value = &NetworkMessage.ValueResponse{
-		RandomId: findNode.RandomId,
-		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(findNode.RandomId, contacts)},
+
+	value := network.storeTable.Get(findNode.Hash)
+	if value == nil {
+		packet.Value = &NetworkMessage.ValueResponse{
+			RandomId: findNode.RandomId,
+			Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(findNode.RandomId, contacts)},
+		}
+	} else {
+		fmt.Println("Actually found value with hash " + findNode.Hash + " in StoreTable.")
+		packet.Value = &NetworkMessage.ValueResponse{
+			RandomId: findNode.RandomId,
+			Response: &NetworkMessage.ValueResponse_Content{value},
+		}
 	}
 
 	out, merr := proto.Marshal(packet)
 	if merr != nil {
 		fmt.Println("Error marshalling find_value RESPONSE packet")
 	}
-
-	fmt.Println("TODO: Actually fetch the value")
 
 	network.dw.sendDataToAddress(ensurePort(addr, "42042"), out)
 }
@@ -680,13 +650,31 @@ func (network *Network) sendFindDataMessage(key *KademliaID, recipient *Contact,
 	network.dw.sendDataToAddress(ensurePort(recipient.Address, "42042"), out)
 }
 
-// STORE RPC
-<<<<<<< HEAD
-func (network *Network) SendStoreMessage(data []byte) {
-	// TODO
-=======
+type hashValueContainer struct {
+	hash    string
+	network *Network
+	content []byte
+}
 
-func (network *Network) CreateStoreMessage(hash string , content []byte, pin bool) *NetworkMessage.Store {
+func (network *Network) SendStoreIterative(hash string, content []byte) {
+	hvc := &hashValueContainer{}
+	hvc.network = network
+	hvc.hash = hash
+	hvc.content = content
+	network.NodeLookup(NewKademliaID(hash), hvc.storeOnReceivedContacts)
+}
+
+func (hvc *hashValueContainer) storeOnReceivedContacts(contacts []Contact, data *[]byte) {
+	for i := range contacts {
+		contact := contacts[i]
+		if contact.ID != nil {
+			hvc.network.SendStoreMessage(hvc.network.CreateStoreMessage(hvc.hash, hvc.content, false), contact.Address)
+		}
+	}
+}
+
+// STORE RPC
+func (network *Network) CreateStoreMessage(hash string, content []byte, pin bool) *NetworkMessage.Store {
 
 	randomID := NewRandomKademliaID()
 
@@ -695,9 +683,9 @@ func (network *Network) CreateStoreMessage(hash string , content []byte, pin boo
 		RandomId:   randomID.String(),
 		KademliaId: network.routingTable.Me().ID.String(),
 		Address:    network.routingTable.Me().Address,
-		Hash: 			hash,
+		Hash:       hash,
 		Content:    content,
-		Pin:				pin,
+		Pin:        pin,
 	}
 	return store
 }
@@ -715,33 +703,31 @@ func (network *Network) CreateStoreResponseMessage(randomID *KademliaID) *Networ
 
 func (network *Network) SendStoreMessage(storeMessage *NetworkMessage.Store, address string) {
 
-	packet := createPacket()
+	packet := network.createPacket()
 	packet.Store = storeMessage
 
-	
 	out, merr := proto.Marshal(packet)
 	if merr != nil {
 		fmt.Println("Error marshaling store packet")
 	} else {
 		network.rpcTable.Push(NewKademliaID(storeMessage.RandomId))
 		fmt.Println("Store adress: " + address)
-		sendDataToAddress(ensurePort(address, "42042"), out)
+		network.dw.sendDataToAddress(ensurePort(address, "42042"), out)
 	}
 }
 
 func (network *Network) SendStoreResponseMessage(storeMessage *NetworkMessage.StoreResponse, address string) {
 
-	packet := createPacket()
+	packet := network.createPacket()
 	packet.StoreResponse = storeMessage
 
-	
 	out, merr := proto.Marshal(packet)
 	if merr != nil {
 		fmt.Println("Error marshaling storeresponse packet")
 	} else {
 		//fmt.Println("Marshalled data is " + string(out[:]))
 		fmt.Println("Sending StoreResponse with adress: " + address + "With random id: " + storeMessage.RandomId)
-		sendDataToAddress(ensurePort(address, "42042"), out)
+		network.dw.sendDataToAddress(ensurePort(address, "42042"), out)
 	}
 }
 
@@ -755,27 +741,19 @@ func (network *Network) HandleStoreMessage(storeMessage *NetworkMessage.Store) {
 	pin := storeMessage.Pin
 
 	fmt.Println("Recieved store message, frome:" + kademliaID + "With random id: " + randomID)
-	contentRes := network.storeTable.Push(content,fileName,true, pin)
-	if contentRes == false{
+	contentRes := network.storeTable.Push(content, fileName, true, pin)
+	if contentRes == false {
 		fmt.Println("ERROR SAVING FILE")
-	}else{
+	} else {
 		network.SendStoreResponseMessage(network.CreateStoreResponseMessage(NewKademliaID(randomID)), address)
 	}
-
 
 }
 
 func (network *Network) HandleStoreResponseMessage(storeMessage *NetworkMessage.StoreResponse) {
-
 	row := network.rpcTable.Pop(NewKademliaID(storeMessage.RandomId))
 	//var contact Contact
 	if row == nil {
 		fmt.Println("Received StoreResponse with random id " + storeMessage.RandomId + " but nothing was found in the rpcTable")
-	} else {
-		fmt.Println("!!!!SUCCESS!!! StoreResponse with random id " + storeMessage.RandomId)
 	}
-	// Does this simply work?? Answer is no my friend!
-	fmt.Println("Recieved StoreResponseMessage from" + storeMessage.KademliaId +" With randomID " + storeMessage.RandomId + " From address: " + storeMessage.Address )
-	
->>>>>>> origin/Marcus
 }

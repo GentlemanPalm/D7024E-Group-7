@@ -3,8 +3,8 @@ package d7024e
 // This file intends to implement a table of ping calls and their timeouts
 
 import (
-	"sync"
 	"fmt"
+	"sync"
 	//"d7024e/kademliaid"
 )
 

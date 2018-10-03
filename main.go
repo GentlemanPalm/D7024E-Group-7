@@ -53,7 +53,7 @@ func main() {
 	go testNodeLookup(me.ID, network, 20)
 	//go testValueLookup(me.ID, network, 25)
 
-	go marcusTest(network)
+	go marcusTest(&me, network)
 
 	network.Listen(sport)
 	//go listenForConnections()
@@ -67,8 +67,8 @@ func main() {
 	}
 }
 
-func marcusTest(network *Network) {
-	time.Sleep(time.Duration(1) * time.Second)
+func marcusTest(me *d7024e.Contact, network *d7024e.Network) {
+	time.Sleep(time.Duration(30) * time.Second)
 	//Bootsrap gets pinned file for republishing.
 	saddr, e0 := net.ResolveUDPAddr("udp", "kademliaBootstrap:42042")
 	if e0 != nil {
