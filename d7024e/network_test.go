@@ -178,6 +178,64 @@ func TestHandleFindNode(t *testing.T) {
 	}
 }
 
+const nrofContacts = 10
+
+func TestNodeLookup(t *testing.T) {
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	for i := 0; i < nrofContacts; i++ {
+		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
+		network.routingTable.AddContact(contact)
+	}
+
+	target := NewRandomKademliaID()
+
+	network.NodeLookup(target, onNodeLookupFinish)
+
+	//time.Sleep(time.Duration(1) * time.Second)
+
+	//key := sentPacket.packet.FindNode.Hash
+
+	contacts := make([]Contact, 20)
+	for i := 0; i < len(contacts); i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
+	}
+
+	if mdw.nrofTimesCalled != 3 { // TODO: Use alpha
+		t.Errorf("(NodeLookup) Error: Expected 3 packets sent from NodeLookup, received %d", mdw.nrofTimesCalled)
+	}
+
+	for i := 0; i < nrofContacts; i++ {
+		//time.Sleep(time.Duration(1) * time.Second / 2)
+		responseID := sentPacket.packet.FindNode.RandomId
+		nodes := &NetworkMessage.ValueResponse{
+			RandomId: responseID,
+			Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(responseID, contacts)},
+		}
+		network.findTable.ProcessResult(nodes)
+		//network.handleFindContactResponse(recipient.ID, nodes)
+	}
+	time.Sleep(time.Duration(7) * time.Second)
+}
+
+func onNodeLookupFinish(contacts []Contact, data *[]byte) {
+	missing := 0
+	for i := range contacts {
+		if contacts[i].ID == nil {
+			missing++
+		}
+	}
+	if data != nil {
+		fmt.Println("[ERR] (NodeLookup) Error: Data response received for NodeLookup")
+	} else {
+		fmt.Println("[OK] Otherwise, NodeLookup seems OK.")
+	}
+}
+
 type PacketContainer struct {
 	packet *NetworkMessage.Packet
 }
