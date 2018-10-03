@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-
+	"math/rand"
+	"io/ioutil"
 	"net"
 	"strings"
 	"time"
@@ -42,14 +43,45 @@ func main() {
 	//fmt.Println("\n",d7024e.Hash(str))
 
 	
-
+	rand.Seed(int64(time.Now().Nanosecond()))
 	me := d7024e.NewContact(d7024e.NewRandomKademliaID(), getIaddr())
+	fmt.Println("My ID")
+	fmt.Println(me.ID)
 	routingTable := d7024e.NewRoutingTable(me)
 	network := d7024e.NewNetwork(routingTable)
 
 	sport, _ := strconv.Atoi(*port)
 	go send2(me.ID, network)
-	d7024e.Republish(network)
+
+
+	//Bootsrap gets pinned file for republishing.
+	saddr, e0 := net.ResolveUDPAddr("udp", "kademliaBootstrap:42042")
+	if e0 != nil {
+		fmt.Println(e0)
+	}
+	strRemoteAddr := saddr.String()  
+	ip := getIaddr() + ":42042"
+	if ip == strRemoteAddr{
+		fileName := d7024e.Hash("d7024e/text.txt")
+		filePath := "Files/" + fileName
+
+		content, err1 := ioutil.ReadFile("d7024e/text.txt")
+		if err1 != nil {
+			log.Fatal(err1)
+		}
+
+  	err2 := ioutil.WriteFile(filePath, content, 0644)
+  	if err2 != nil {
+			log.Fatal(err2)
+		}else{
+
+			storeTable := network.GetStoreTable()
+			storeTable.Push(content, fileName,true, true)
+		}
+	}
+
+
+	go testRepublish(me.ID,network)
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -61,7 +93,6 @@ func main() {
 		//fmt.Println("hue")
 	}
 }
-
 // Yank function to determine IP on local network with docker.
 // Might not work for outbound traffic
 func getIaddr() string {
@@ -85,6 +116,10 @@ func getIaddr() string {
 		}
 	}
 	return iaddr
+}
+func testRepublish (kademliaId *d7024e.KademliaID, network *d7024e.Network){
+
+	network.Republish(kademliaId)
 }
 
 func send2(kademliaId *d7024e.KademliaID, network *d7024e.Network) {

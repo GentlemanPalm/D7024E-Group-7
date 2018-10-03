@@ -20,8 +20,18 @@ message Pong {
 }
 
 message Store {
-  string hash = 1;
-  bytes content = 2;
+  string kademlia_id = 1;
+  string random_id = 2;
+  string address = 3;
+  string hash = 4;
+  bytes content = 5;
+  bool pin = 6; 
+}
+
+message StoreResponse{
+  string kademlia_id = 1;
+  string random_id = 2;
+  string address = 3;
 }
 
 message FindNode {
@@ -53,4 +63,5 @@ message Packet {
   Ping ping = 1;
   Pong pong = 2;
   Store store = 3;
+  StoreResponse StoreResponse = 4;
 }

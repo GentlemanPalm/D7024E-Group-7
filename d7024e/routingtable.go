@@ -1,9 +1,5 @@
 package d7024e
 
-import(
-	"fmt"
-)
-
 const bucketSize = 20
 
 // TODO: Needs to be managed under mutex?
@@ -35,8 +31,6 @@ func (routingTable *RoutingTable) AddContact(contact Contact) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
 	bucket := routingTable.buckets[bucketIndex]
 	bucket.AddContact(contact)
-	fmt.Printf("This is buckets: ")
-	fmt.Printf("%v", bucket)
 }
 
 // FindClosestContacts finds the count closest Contacts to the target in the RoutingTable
@@ -59,8 +53,6 @@ func (routingTable *RoutingTable) FindClosestContacts(target *KademliaID, count 
 	}
 
 	candidates.Sort()
-	fmt.Printf("This is candidates: ")
-	fmt.Printf("%v", candidates)
 
 	if count > candidates.Len() {
 		count = candidates.Len()
