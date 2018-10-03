@@ -5,6 +5,7 @@ import (
 	"d7024e"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -18,6 +19,10 @@ import (
 const defaultPort = "42042"
 
 func main() {
+	//Get globals
+	globals := d7024e.GetGlobals()
+	fmt.Println(globals)
+
 	// This section intends to parse command line parameters
 	var port = flag.String("port", defaultPort, "Port to expect connections to")
 	var bootstrapIP = flag.String("bsip", "kademliaBootstrap", "IP or network hostname of bootstrap node")
@@ -33,11 +38,6 @@ func main() {
 	var y = NetworkMessage.SearchRequest{}
 	fmt.Println("Hello, World! " + x.String() + y.String())
 
-	//Test for hash
-	var str = "d7024e/text.txt"
-	fmt.Println("\n" + "Hello, I hashed this file: ")
-	d7024e.Hash(str)
-	//fmt.Println("Current time is " + strconv.Itoa(time.Now().Nanosecond()))
 	rand.Seed(int64(time.Now().Nanosecond()))
 	me := d7024e.NewContact(d7024e.NewRandomKademliaID(), getIaddr())
 	fmt.Println("Created contact for myself")
@@ -47,10 +47,14 @@ func main() {
 
 	sport, _ := strconv.Atoi(*port)
 	go send2(me.ID, network)
+
 	go testFindNode(me.ID, network, 14)
 	//go testFindNode(me.ID, network, 25)
 	go testNodeLookup(me.ID, network, 20)
 	//go testValueLookup(me.ID, network, 25)
+
+	go marcusTest(network)
+
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -61,6 +65,37 @@ func main() {
 	for {
 		//fmt.Println("hue")
 	}
+}
+
+func marcusTest(network *Network) {
+	time.Sleep(time.Duration(1) * time.Second)
+	//Bootsrap gets pinned file for republishing.
+	saddr, e0 := net.ResolveUDPAddr("udp", "kademliaBootstrap:42042")
+	if e0 != nil {
+		fmt.Println(e0)
+	}
+	strRemoteAddr := saddr.String()
+	ip := getIaddr() + ":42042"
+	if ip == strRemoteAddr {
+		fileName := d7024e.Hash("d7024e/text.txt")
+		filePath := "Files/" + fileName
+
+		content, err1 := ioutil.ReadFile("d7024e/text.txt")
+		if err1 != nil {
+			log.Fatal(err1)
+		}
+
+		err2 := ioutil.WriteFile(filePath, content, 0644)
+		if err2 != nil {
+			log.Fatal(err2)
+		} else {
+
+			storeTable := network.GetStoreTable()
+			storeTable.Push(content, fileName, true, true)
+		}
+	}
+
+	go testRepublish(me.ID, network)
 }
 
 // Yank function to determine IP on local network with docker.
@@ -86,6 +121,10 @@ func getIaddr() string {
 		}
 	}
 	return iaddr
+}
+
+func testRepublish(kademliaId *d7024e.KademliaID, network *d7024e.Network) {
+	network.Republish(kademliaId)
 }
 
 func testNodeLookup(id *d7024e.KademliaID, network *d7024e.Network, delay int) {

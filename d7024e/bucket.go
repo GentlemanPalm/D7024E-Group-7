@@ -89,8 +89,5 @@ func (bucket *bucket) getContactAndCalcDistance(target *KademliaID) []Contact {
 
 // Len return the size of the bucket
 func (bucket *bucket) Len() int {
-	bucket.lock.Lock()
-	defer bucket.lock.Unlock()
-
 	return bucket.list.Len()
 }

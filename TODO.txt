@@ -1,7 +1,0 @@
-Marcus:
-	1. Gör så att en bucket kan bara rymma "k" st (typ 20) st element
-	2. Implementera Store-RPC
-
-Jonathan:
-	1. Implementera Find_Node-RPC
-	2. Implementera Node Lookup

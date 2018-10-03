@@ -19,14 +19,24 @@ message Pong {
   string address = 3;
 }
 
-message Store {
-  string hash = 1;
-  bytes content = 2;
-}
-
 message Find {
   string random_id = 1;
   string hash = 2;
+}
+
+message Store {
+  string kademlia_id = 1;
+  string random_id = 2;
+  string address = 3;
+  string hash = 4;
+  bytes content = 5;
+  bool pin = 6; 
+}
+
+message StoreResponse{
+  string kademlia_id = 1;
+  string random_id = 2;
+  string address = 3;
 }
 
 message KademliaPair {
@@ -47,17 +57,19 @@ message ValueResponse {
   }
 }
 
+
 message Packet {
   Ping ping = 1;
   Pong pong = 2;
 
   Store store = 3;
+  StoreResponse StoreResponse = 4;
 
-  Find find_node = 4;
-  ValueResponse nodes = 5;
+  Find find_node = 5;
+  ValueResponse nodes = 6;
 
-  Find find_value = 6;
-  ValueResponse value = 7; 
+  Find find_value = 7;
+  ValueResponse value = 8; 
 
-  KademliaPair origin = 8;
+  KademliaPair origin = 9;
 }
