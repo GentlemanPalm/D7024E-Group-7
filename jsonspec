@@ -1,0 +1,48 @@
+DFS Store 
+{
+    "hash": "asdf....", (ett kademliaID som hash)
+    "content": "gmdffkslgndfgnASFAs4Af" (base64)
+}
+
+svar:
+
+{
+    "accepted": true/false
+}
+
+
+DFS Get
+{
+    "hash": (ett kademliaID)
+}
+
+svar:
+
+{
+    "status": "ok"/"not found",
+    "content": base64 encoding of content
+}
+
+
+DFS Pin
+{
+    "hash": 
+}
+
+svar:
+
+{
+    "status": "ok"/"not found"
+}
+
+DFS Unpin
+
+{
+    "hash": 
+}
+
+svar:
+
+{
+    "status": "ok"/"not pinned"
+}
