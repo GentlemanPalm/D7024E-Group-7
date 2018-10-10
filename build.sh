@@ -4,5 +4,5 @@
 docker build . -t kademlia
 #sleep 5
 #docker stack deploy myApp -c docker-compose.yml
-docker-compose up --scale kademliaNodes=4
+docker-compose up --scale kademliaNodes=3
 

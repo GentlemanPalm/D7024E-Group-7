@@ -1,0 +1,1 @@
+curl --header "Content-Type: application/json" --request POST --data '{"herp":"derp"}' localhost:8080/pin/
