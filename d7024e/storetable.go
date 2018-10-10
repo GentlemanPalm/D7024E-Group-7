@@ -86,14 +86,6 @@ func (table *StoreTable) Get(hash string) []byte {
 }
 
 func (table *StoreTable) Pin(hash string) bool {
-	return table.Pinn(hash, true)
-}
-
-func (table *StoreTable) Unpin(hash string) bool {
-	return table.Pinn(hash, false)
-}
-
-func (table *StoreTable) Pinn(hash string, pin bool) bool {
 	table.lock.Lock()
 	defer table.lock.Unlock()
 
@@ -102,7 +94,20 @@ func (table *StoreTable) Pinn(hash string, pin bool) bool {
 		return false
 	}
 
-	item.pin = pin
+	item.pin = true
+	return true
+}
+
+func (table *StoreTable) Unpin(hash string) bool {
+	table.lock.Lock()
+	defer table.lock.Unlock()
+
+	item := table.rows[hash]
+	if item == nil || !item.pin {
+		return false
+	}
+
+	item.pin = false
 	return true
 }
 

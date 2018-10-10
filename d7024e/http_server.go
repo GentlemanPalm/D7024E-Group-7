@@ -65,8 +65,10 @@ func (server *Server) cat(w http.ResponseWriter, r *http.Request) {
 	hcc.r = server.parseRequest(r)
 	hcc.w = &w
 	hcc.c = make(chan string)
-	server.network.ValueLookup(NewKademliaID(hcc.r.Hash), hcc.onCatCallback)
-	fmt.Fprintf(*hcc.w, <-hcc.c)
+	go server.network.ValueLookup(NewKademliaID(hcc.r.Hash), hcc.onCatCallback)
+	result := <-hcc.c
+	fmt.Println("[CAT DOEN] " + result)
+	fmt.Fprintf(*hcc.w, result)
 }
 
 func (hcc *HttpCallbackContainer) onCatCallback(contacts []Contact, content *[]byte) {
@@ -84,7 +86,6 @@ func (hcc *HttpCallbackContainer) onCatCallback(contacts []Contact, content *[]b
 	response.Content = value
 	fmt.Println("[CAT :3] Returning value for " + hcc.r.Hash)
 	hcc.c <- hcc.server.marshalResponse(response)
-
 }
 
 func (server *Server) store(w http.ResponseWriter, r *http.Request) {
@@ -117,15 +118,43 @@ func (server *Server) pin(w http.ResponseWriter, r *http.Request) {
 
 	if result {
 		status = "ok"
+		response := &Response{}
+		response.Content = ""
+		response.Status = status
+		fmt.Fprintf(w, server.marshalResponse(response))
+		return
 	} else {
-		status = "not stored on node" // TODO: Fetch the item from the network and save it
+		fmt.Println("Received pin, but content not stored on node.")
+		status = "not stored on node"
+		hcc := &HttpCallbackContainer{}
+		hcc.server = server
+		hcc.r = request
+		hcc.w = &w
+		hcc.c = make(chan string)
+		go server.network.ValueLookup(NewKademliaID(hcc.r.Hash), hcc.onPinCallback)
+		result := <-hcc.c
+		fmt.Println("[PIN DONE] " + result)
+		fmt.Fprintf(*hcc.w, result)
 	}
 
-	response := &Response{}
-	response.Content = ""
-	response.Status = status
+}
 
-	fmt.Fprintf(w, server.marshalResponse(response))
+func (hcc *HttpCallbackContainer) onPinCallback(contacts []Contact, content *[]byte) {
+	if content == nil {
+		fmt.Println("[PIN FAIL] Could not find value for " + hcc.r.Hash)
+		response := &Response{}
+		response.Status = "not found"
+		response.Content = ""
+		hcc.c <- hcc.server.marshalResponse(response)
+		return
+	}
+	value := base64.StdEncoding.EncodeToString(*content)
+	response := &Response{}
+	response.Status = "ok"
+	response.Content = value
+	hcc.server.network.storeTable.Push(*content, hcc.r.Hash, true, true)
+	fmt.Println("[PIN SUCCESS] " + hcc.r.Hash + " is pinned. Returning response.")
+	hcc.c <- hcc.server.marshalResponse(response)
 }
 
 func (server *Server) unpin(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +169,7 @@ func (server *Server) unpin(w http.ResponseWriter, r *http.Request) {
 	if result {
 		status = "ok"
 	} else {
-		status = "not stored on node" // TODO: Fetch the item from the network and save it
+		status = "not found" // TODO: Fetch the item from the network and save it
 	}
 
 	response := &Response{}
