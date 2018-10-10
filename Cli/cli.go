@@ -2,13 +2,30 @@ package main
 
 
 import (
-    "bufio"
-    "fmt"
-    "os"
-    "strings"
-    p "D7024E-Group-7/d7024e"
-    //"flag"
+  "bufio"
+  "os"
+  "fmt"
+  "strings"
+  p "d7024e"
+  "encoding/json"
+  "encoding/json"
+  "net/http"
+  "json"
+  "crypto/sha1"
+  "io/ioutil"
+  "log"
 )
+
+type Request struct {
+  Hash    string `json:"hash"`
+  Content string `json"content,omitempty"`
+}
+
+// The generic response used for all requests
+type Response struct {
+  Status  string `json:"status"`
+  Content string `json:"content,omitempty"`
+}
 
 func main() {
 
@@ -24,7 +41,7 @@ func main() {
     	if(len(words) >= 2){
     		cmd = words[0]
     		arg = words[1]
-    		callRPC(cmd,arg)
+    		callRPC(client,cmd,arg)
     	} else{
     		fmt.Println("Commands: [store , pin , unpin , pin , cat , -help]" + "\n" + "Flags: []")
     	}
@@ -33,22 +50,97 @@ func main() {
   }
 }
 
-func callRPC(cmd string , arg string){
+func callRPC(client *Client, cmd string , arg string){
 	switch cmd {
     case "store":
       fmt.Println(cmd + " is about to happend, with arg: " + arg)
-      hash := p.Hash(arg)
-      fmt.Println(hash)
+      SendRequest(cmd,arg)
     case "pin":
       fmt.Println(cmd + " is about to happend, with arg: " + arg)
+      SendRequest(cmd,arg)
     case "unpin":
       fmt.Println(cmd + " is about to happend, with arg: " + arg)
+      SendRequest(cmd,arg)
     case "cat":
       fmt.Println(cmd + " is about to happend, with arg: " + arg)
+      SendRequest(cmd,arg)  
     default:
       fmt.Println("Syntax error" + "\n" + "commands: store , pin , unpin , pin , cat ")  
   }
 }
+
+func SendRequest(rpc string , arg string){
+  
+  client := &http.Client{}
+  value := readFile(arg)
+  content := base64.StdEncoding.EncodeToString(value)
+
+  reqStruct := &Request {
+    Hash: hash(arg),
+    Content: content,
+  }
+
+  c := marshalRequest(reqStruct)
+
+  url := "localhost:8080" + "/" + rpc + "/"
+
+  req, err := http.NewRequest("POST", url, c)
+  req.Header.Set("Content-Type", "application/json")
+
+  resp, err1 := client.Do(req)
+  if err1 != nil {
+    log.Fatalln(err1)
+  }
+
+  response := marshalResponse(resp)
+
+  var result map[string]interface{}
+  json.NewDecoder(resp.Body).Decode(&result)
+  log.Println(result)
+}
+
+func marshalRequest(request *Request) string {
+  marsh, merr := json.Marshal(request)
+
+  if merr != nil {
+    fmt.Println(merr)
+  }
+
+  s := string(marsh[:len(marsh)])
+
+  return s
+}
+
+func hash(arg string) string {
+
+  content, err := ioutil.ReadFile(arg)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  h := sha1.New()
+  h.Write([]byte(arg))
+  h.Write([]byte(content))
+  bs := h.Sum(nil)
+
+  str := fmt.Sprintf("%x\n", bs)
+
+  return str;
+}
+
+func readFile(arg string) *[]byte {
+
+  var content *[]byte
+  filepath := "../" + arg
+
+  content, err := ioutil.ReadFile(filepath)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return content
+}
+
  
 
 
