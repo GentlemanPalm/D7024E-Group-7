@@ -2,7 +2,9 @@ package d7024e
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/rand"
+	"strings"
 )
 
 // the static number of bytes in a KademliaID
@@ -13,7 +15,14 @@ type KademliaID [IDLength]byte
 
 // NewKademliaID returns a new instance of a KademliaID based on the string input
 func NewKademliaID(data string) *KademliaID {
-	decoded, _ := hex.DecodeString(data)
+	data = strings.TrimSpace(data)
+	decoded, err := hex.DecodeString(data)
+
+	//fmt.Println("Data is |" + data + "| and its decoded length is " + strconv.Itoa(len(decoded)))
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	newKademliaID := KademliaID{}
 	for i := 0; i < IDLength; i++ {
@@ -53,7 +62,7 @@ func (kademliaID KademliaID) Equals(otherKademliaID *KademliaID) bool {
 	return true
 }
 
-// CalcDistance returns a new instance of a KademliaID that is built 
+// CalcDistance returns a new instance of a KademliaID that is built
 // through a bitwise XOR operation betweeen kademliaID and target
 func (kademliaID KademliaID) CalcDistance(target *KademliaID) *KademliaID {
 	result := KademliaID{}

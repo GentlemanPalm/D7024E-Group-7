@@ -55,6 +55,8 @@ func main() {
 
 	go marcusTest(&me, network)
 
+	go d7024e.StartServer(network)
+
 	network.Listen(sport)
 	//go listenForConnections()
 
@@ -91,6 +93,7 @@ func marcusTest(me *d7024e.Contact, network *d7024e.Network) {
 		} else {
 
 			storeTable := network.GetStoreTable()
+			fmt.Println(" --- > Hash is " + fileName)
 			storeTable.Push(content, fileName, true, true)
 		}
 	}

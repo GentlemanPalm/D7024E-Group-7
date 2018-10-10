@@ -1,6 +1,7 @@
 package d7024e
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -37,7 +38,7 @@ func (server *Server) parseRequest(r *http.Request) *Request {
 	return data
 }
 
-func (server *Server) createResponse(response *Response) string {
+func (server *Server) marshalResponse(response *Response) string {
 	marsh, merr := json.Marshal(response)
 
 	if merr != nil {
@@ -49,31 +50,104 @@ func (server *Server) createResponse(response *Response) string {
 	return s
 }
 
+type HttpCallbackContainer struct {
+	server *Server
+	r      *Request
+	w      *http.ResponseWriter
+	c      chan string
+}
+
 // Based around the examples detailed in https://golang.org/doc/articles/wiki/
 func (server *Server) cat(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("received HTTP request!")
-	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
+	fmt.Println("meow")
+	hcc := &HttpCallbackContainer{}
+	hcc.server = server
+	hcc.r = server.parseRequest(r)
+	hcc.w = &w
+	hcc.c = make(chan string)
+	server.network.ValueLookup(NewKademliaID(hcc.r.Hash), hcc.onCatCallback)
+	fmt.Fprintf(*hcc.w, <-hcc.c)
+}
+
+func (hcc *HttpCallbackContainer) onCatCallback(contacts []Contact, content *[]byte) {
+	if content == nil {
+		fmt.Println("[CAT :3] Could not find value for " + hcc.r.Hash)
+		response := &Response{}
+		response.Status = "not found"
+		response.Content = ""
+		hcc.c <- hcc.server.marshalResponse(response)
+		return
+	}
+	value := base64.StdEncoding.EncodeToString(*content)
+	response := &Response{}
+	response.Status = "ok"
+	response.Content = value
+	fmt.Println("[CAT :3] Returning value for " + hcc.r.Hash)
+	hcc.c <- hcc.server.marshalResponse(response)
+
 }
 
 func (server *Server) store(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("received HTTP store request")
-	request := parseRequest(r)
+	request := server.parseRequest(r)
 
-	//storeTable := network.GetStoreTable()
-	//storeTable.Push(content, fileName, true, true)
+	storeTable := server.network.GetStoreTable()
 
-	fmt.Fprintf(w, "Snark snark %s!", r.URL.Path[1:])
+	res, err := base64.StdEncoding.DecodeString(request.Content)
+	if err != nil {
+		fmt.Println(err)
+	}
+	storeTable.Push(res, request.Hash, true, true)
+
+	response := &Response{}
+	response.Content = request.Hash
+	response.Status = "ok"
+
+	fmt.Fprintf(w, server.marshalResponse(response))
 }
 
 func (server *Server) pin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("received pin HTTP request!")
 
-	fmt.Fprintf(w, "abcd")
+	request := server.parseRequest(r)
+
+	storeTable := server.network.GetStoreTable()
+	result := storeTable.Pin(request.Hash)
+	status := ""
+
+	if result {
+		status = "ok"
+	} else {
+		status = "not stored on node" // TODO: Fetch the item from the network and save it
+	}
+
+	response := &Response{}
+	response.Content = ""
+	response.Status = status
+
+	fmt.Fprintf(w, server.marshalResponse(response))
 }
 
 func (server *Server) unpin(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("received snarky HTTP request!")
-	fmt.Fprintf(w, "Woof woof %s!", r.URL.Path[1:])
+	fmt.Println("received unpin HTTP request!")
+
+	request := server.parseRequest(r)
+
+	storeTable := server.network.GetStoreTable()
+	result := storeTable.Unpin(request.Hash)
+	status := ""
+
+	if result {
+		status = "ok"
+	} else {
+		status = "not stored on node" // TODO: Fetch the item from the network and save it
+	}
+
+	response := &Response{}
+	response.Content = ""
+	response.Status = status
+
+	fmt.Fprintf(w, server.marshalResponse(response))
 }
 
 func StartServer(network *Network) {

@@ -85,6 +85,27 @@ func (table *StoreTable) Get(hash string) []byte {
 	return table.fh.ReadFile(hash)
 }
 
+func (table *StoreTable) Pin(hash string) bool {
+	return table.Pinn(hash, true)
+}
+
+func (table *StoreTable) Unpin(hash string) bool {
+	return table.Pinn(hash, false)
+}
+
+func (table *StoreTable) Pinn(hash string, pin bool) bool {
+	table.lock.Lock()
+	defer table.lock.Unlock()
+
+	item := table.rows[hash]
+	if item == nil {
+		return false
+	}
+
+	item.pin = pin
+	return true
+}
+
 func (st *StoreTable) Expire() {
 	time.Sleep(time.Duration(30) * time.Second)
 
