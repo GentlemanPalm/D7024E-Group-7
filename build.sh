@@ -1,6 +1,6 @@
 #docker stack rm myApp
-#docker rm $(docker ps -a -q) --force
-#docker image prune --force
+docker rm $(docker ps -a -q) --force
+docker image prune --force
 docker build . -t kademlia
 #sleep 5
 #docker stack deploy myApp -c docker-compose.yml

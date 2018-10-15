@@ -6,11 +6,9 @@ import (
   "os"
   "fmt"
   "strings"
-  p "d7024e"
   "encoding/json"
-  "encoding/json"
+  "encoding/base64"
   "net/http"
-  "json"
   "crypto/sha1"
   "io/ioutil"
   "log"
@@ -41,7 +39,7 @@ func main() {
     	if(len(words) >= 2){
     		cmd = words[0]
     		arg = words[1]
-    		callRPC(client,cmd,arg)
+    		callRPC(cmd,arg)
     	} else{
     		fmt.Println("Commands: [store , pin , unpin , pin , cat , -help]" + "\n" + "Flags: []")
     	}
@@ -50,7 +48,7 @@ func main() {
   }
 }
 
-func callRPC(client *Client, cmd string , arg string){
+func callRPC(cmd string , arg string){
 	switch cmd {
     case "store":
       fmt.Println(cmd + " is about to happend, with arg: " + arg)
@@ -80,11 +78,14 @@ func SendRequest(rpc string , arg string){
     Content: content,
   }
 
-  c := marshalRequest(reqStruct)
+  c := strings.NewReader(marshalRequest(reqStruct))
 
-  url := "localhost:8080" + "/" + rpc + "/"
+  url := "http://localhost:8080" + "/" + rpc + "/"
 
   req, err := http.NewRequest("POST", url, c)
+  if err != nil {
+    log.Fatalln(err)
+  }
   req.Header.Set("Content-Type", "application/json")
 
   resp, err1 := client.Do(req)
@@ -92,7 +93,7 @@ func SendRequest(rpc string , arg string){
     log.Fatalln(err1)
   }
 
-  response := marshalResponse(resp)
+  //response := marshalResponse(resp)
 
   var result map[string]interface{}
   json.NewDecoder(resp.Body).Decode(&result)
@@ -128,12 +129,11 @@ func hash(arg string) string {
   return str;
 }
 
-func readFile(arg string) *[]byte {
+func readFile(arg string) []byte {
 
-  var content *[]byte
-  filepath := "../" + arg
+  fmt.Println(arg)
 
-  content, err := ioutil.ReadFile(filepath)
+  content, err := ioutil.ReadFile(arg)
   if err != nil {
     log.Fatal(err)
   }
