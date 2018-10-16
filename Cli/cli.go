@@ -39,7 +39,7 @@ func main() {
     	if(len(words) >= 2){
     		cmd = words[0]
     		arg = words[1]
-    		callRPC(cmd,arg)
+    		SendRequest(cmd,arg)
     	} else{
     		fmt.Println("Commands: [store , pin , unpin , pin , cat , -help]" + "\n" + "Flags: []")
     	}
@@ -48,56 +48,77 @@ func main() {
   }
 }
 
-func callRPC(cmd string , arg string){
-	switch cmd {
-    case "store":
-      fmt.Println(cmd + " is about to happend, with arg: " + arg)
-      SendRequest(cmd,arg)
-    case "pin":
-      fmt.Println(cmd + " is about to happend, with arg: " + arg)
-      SendRequest(cmd,arg)
-    case "unpin":
-      fmt.Println(cmd + " is about to happend, with arg: " + arg)
-      SendRequest(cmd,arg)
-    case "cat":
-      fmt.Println(cmd + " is about to happend, with arg: " + arg)
-      SendRequest(cmd,arg)  
-    default:
-      fmt.Println("Syntax error" + "\n" + "commands: store , pin , unpin , pin , cat ")  
-  }
-}
-
 func SendRequest(rpc string , arg string){
   
   client := &http.Client{}
-  value := readFile(arg)
-  content := base64.StdEncoding.EncodeToString(value)
+  reqStruct := &Request{}
 
-  reqStruct := &Request {
-    Hash: hash(arg),
-    Content: content,
+  url := "http://localhost:8080" + "/" + rpc + "/"
+
+  switch rpc {
+    case "store":
+      fmt.Println(rpc + " is about to happend, with arg: " + arg)
+      value := readFile(arg)
+      content := base64.StdEncoding.EncodeToString(value)
+
+      reqStruct.Hash = hash(arg)
+      reqStruct.Content = content
+
+    case "pin":
+      fmt.Println(rpc + " is about to happend, with arg: " + arg)
+      reqStruct.Hash = arg
+      reqStruct.Content = ""
+
+    case "unpin":
+      fmt.Println(rpc + " is about to happend, with arg: " + arg)
+      reqStruct.Hash = arg
+      reqStruct.Content = ""
+
+    case "cat":
+      fmt.Println(rpc + " is about to happend, with arg: " + arg)
+      reqStruct.Hash = arg
+      reqStruct.Content = ""
+
+    default:
+      fmt.Println("Syntax error" + "\n" + "commands: store , pin , unpin , pin , cat ")  
   }
 
   c := strings.NewReader(marshalRequest(reqStruct))
 
-  url := "http://localhost:8080" + "/" + rpc + "/"
-
   req, err := http.NewRequest("POST", url, c)
   if err != nil {
     log.Fatalln(err)
+  }else{
+    req.Header.Set("Content-Type", "application/json")
+
+    resp, err1 := client.Do(req)
+    if err1 != nil {
+      log.Fatalln(err1)
+    }
+
+    response := parseRequest(resp)
+    responsePrint(response, rpc)
+
   }
-  req.Header.Set("Content-Type", "application/json")
+}
 
-  resp, err1 := client.Do(req)
-  if err1 != nil {
-    log.Fatalln(err1)
+func responsePrint(response *Response , rpc string){
+  switch rpc {
+    case "store":
+      fmt.Println(rpc + " request status: " + response.Status)
+      fmt.Println(rpc + " Hash: " + response.Content)
+    case "pin":
+      fmt.Println(rpc + " request status: " + response.Status)
+    case "unpin":
+      fmt.Println(rpc + " request status: " + response.Status)
+    case "cat":
+      con := readFile(response.Content)
+      fmt.Println(rpc + " request status: " + response.Status)
+      fmt.Println("Content: ")
+      fmt.Println(con)
+    default:
+      fmt.Println("Error rpc did not succed")  
   }
-
-  //response := marshalResponse(resp)
-
-  var result map[string]interface{}
-  json.NewDecoder(resp.Body).Decode(&result)
-  log.Println(result)
 }
 
 func marshalRequest(request *Request) string {
@@ -141,6 +162,18 @@ func readFile(arg string) []byte {
   return content
 }
 
+func parseRequest(r *http.Response) *Response {
+  body, err := ioutil.ReadAll(r.Body)
+  if err != nil {
+    fmt.Println(err)
+  }
+  data := &Response{}
+  result := json.Unmarshal(body, data)
+  if result != nil {
+    fmt.Println(result)
+  }
+  return data
+}
  
 
 
