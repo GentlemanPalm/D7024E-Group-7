@@ -97,12 +97,12 @@ func SendRequest(rpc string , arg string){
     }
 
     response := parseRequest(resp)
-    responsePrint(response, rpc)
+    responsePrint(response, rpc , arg)
 
   }
 }
 
-func responsePrint(response *Response , rpc string){
+func responsePrint(response *Response , rpc string, arg string){
   switch rpc {
     case "store":
       fmt.Println(rpc + " request status: " + response.Status)
@@ -112,10 +112,17 @@ func responsePrint(response *Response , rpc string){
     case "unpin":
       fmt.Println(rpc + " request status: " + response.Status)
     case "cat":
-      con := readFile(response.Content)
+
+      res, err := base64.StdEncoding.DecodeString(response.Content)
+      if err != nil {
+        fmt.Println(err)
+      }
+
+      t := string(res[:len(res)])
+
       fmt.Println(rpc + " request status: " + response.Status)
       fmt.Println("Content: ")
-      fmt.Println(con)
+      fmt.Println(t)
     default:
       fmt.Println("Error rpc did not succed")  
   }
@@ -145,7 +152,7 @@ func hash(arg string) string {
   h.Write([]byte(content))
   bs := h.Sum(nil)
 
-  str := fmt.Sprintf("%x\n", bs)
+  str := fmt.Sprintf("%x", bs)
 
   return str;
 }
