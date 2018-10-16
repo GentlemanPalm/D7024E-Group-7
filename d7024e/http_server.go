@@ -50,6 +50,18 @@ func (server *Server) marshalResponse(response *Response) string {
 	return s
 }
 
+func (server *Server) marshalRequest(request *Request) string {
+	marsh, merr := json.Marshal(request)
+
+	if merr != nil {
+		fmt.Println(merr)
+	}
+
+	s := string(marsh[:len(marsh)])
+
+	return s
+}
+
 type HttpCallbackContainer struct {
 	server *Server
 	r      *Request
@@ -60,11 +72,23 @@ type HttpCallbackContainer struct {
 // Based around the examples detailed in https://golang.org/doc/articles/wiki/
 func (server *Server) cat(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("meow")
+
 	hcc := &HttpCallbackContainer{}
 	hcc.server = server
 	hcc.r = server.parseRequest(r)
 	hcc.w = &w
 	hcc.c = make(chan string)
+	content := server.network.storeTable.Get(hcc.r.Hash)
+	if content != nil { // If stored locally
+		response := &Response{}
+		response.Status = "ok"
+		b64value := base64.StdEncoding.EncodeToString(content)
+		response.Content = b64value
+		result := server.marshalResponse(response)
+		fmt.Println("[CAT CACHED] " + result)
+		fmt.Fprintf(*hcc.w, result)
+		return
+	}
 	go server.network.ValueLookup(NewKademliaID(hcc.r.Hash), hcc.onCatCallback)
 	result := <-hcc.c
 	fmt.Println("[CAT DOEN] " + result)
@@ -179,13 +203,17 @@ func (server *Server) unpin(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, server.marshalResponse(response))
 }
 
-func StartServer(network *Network) {
-	fmt.Println("Launched web server!")
-	server := &Server{}
-	server.network = network
+func startServer(server *Server) {
 	http.HandleFunc("/pin/", server.pin)
 	http.HandleFunc("/unpin/", server.unpin)
 	http.HandleFunc("/store/", server.store)
 	http.HandleFunc("/cat/", server.cat)
 	http.ListenAndServe(":8080", nil)
+}
+
+func StartServer(network *Network) {
+	fmt.Println("Launched web server!")
+	server := &Server{}
+	server.network = network
+	startServer(server)
 }
