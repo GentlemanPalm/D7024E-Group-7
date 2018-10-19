@@ -2,8 +2,25 @@ package d7024e
 
 import (
 	"NetworkMessage"
+	"strconv"
 	"testing"
 )
+
+func TestPrune(t *testing.T) {
+	me := NewContact(NewRandomKademliaID(), "0.0.0.0")
+	target := NewRandomKademliaID()
+	shortlist1 := NewShortlist(&me, target, nil, 0)
+	contacts := make([]Contact, 20)
+	for i := 0; i < 20; i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "0.0.0."+strconv.Itoa(i))
+	}
+	contact1 := NewContact(NewRandomKademliaID(), "0.0.0.254")
+	shortlist1.AddContacts(contacts)
+	shortlist1.AddContacts([]Contact{contact1})
+	if len(shortlist1.items) > 20 {
+		t.Error("Should only have k elements in contact list")
+	}
+}
 
 func TestGetClosestUnvisited(t *testing.T) {
 	me := NewContact(NewRandomKademliaID(), "0.0.0.0")
@@ -107,7 +124,7 @@ func TestHandleShortlistResponseValue(t *testing.T) {
 	me := NewContact(NewRandomKademliaID(), "0.0.0.0")
 	target := NewRandomKademliaID()
 	shortlist1 := NewShortlist(&me, target, nil, 0)
-	contact1 := NewContact(NewRandomKademliaID(), "0.0.0.1")
+	//contact1 := NewContact(NewRandomKademliaID(), "0.0.0.1")
 	contact2 := NewContact(NewRandomKademliaID(), "0.0.0.2")
 	//contact3 := NewContact(NewRandomKademliaID(), "0.0.0.3")
 	contacts := []Contact{contact2}
