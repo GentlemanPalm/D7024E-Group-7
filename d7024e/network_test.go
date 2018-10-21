@@ -62,6 +62,22 @@ func TestHandleOrigin(t *testing.T) {
 	}
 }
 
+func TestSendPing(t *testing.T) {
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	network.dw = mdw
+
+	contact := NewContact(NewRandomKademliaID(), "0.0.0.0")
+
+	network.SendPingMessage(&contact)
+
+	if mdw.nrofTimesCalled != 1 {
+		t.Error("Receiving a ping did NOT result in a pong message being sent")
+	} else {
+		fmt.Println("Ping messages results in pongs")
+	}
+}
+
 func TestHandlePing(t *testing.T) {
 	network := mockNetwork()
 	mdw := &MockDataWriter{}
