@@ -156,6 +156,23 @@ func TestFindNode(t *testing.T) {
 
 }
 
+func TestFindValue(t *testing.T) {
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	key := NewRandomKademliaID()
+	recipient := NewContact(NewRandomKademliaID(), "127.0.0.1")
+
+	network.SendFindDataMessage(key, &recipient, nil, nil, nil)
+
+	if mdw.nrofTimesCalled != 1 {
+		t.Error("(FindValue) Expected packet to be sent")
+	}
+}
+
 var findValueContent = []byte{1, 3, 3, 7}
 
 type mockFileHandler struct {
