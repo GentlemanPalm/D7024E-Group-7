@@ -19,7 +19,6 @@ type Network struct {
 	nodeLookupTable *NodeLookupTable
 	dw              DataWriter
 	rpcTable        *RpcTable
-	eTable			*RpcTable
 	storeTable      *StoreTable
 }
 
@@ -32,7 +31,6 @@ func NewNetwork(routingTable *RoutingTable) *Network {
 	nw.nodeLookupTable = NewNodeLookupTable()
 	nw.dw = &NetworkDataWriter{}
 	nw.rpcTable = NewRpcTable()
-	nw.eTable = NewRpcTable()
 	nw.storeTable = NewStoreTable()
 	go nw.storeTable.Expire()
 	return nw
@@ -41,13 +39,6 @@ func NewNetwork(routingTable *RoutingTable) *Network {
 
 func (network *Network) Me() *Contact {
 	return network.routingTable.Me()
-}
-
-func (network *Network) Hello() {
-	fmt.Println("----------------Hello-------------")
-}
-func (network *Network) GeteTable() *RpcTable{
-	return network.eTable
 }
 
 func (network *Network) GetStoreTable() *StoreTable {
@@ -236,7 +227,7 @@ func (network *Network) CreatePongMessage(pingMessage *NetworkMessage.Ping) *Net
 }
 
 func (network *Network) HandlePingTimeout(randomID *KademliaID, replacement *Contact) {
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(time.Duration(2) * time.Second)
 	// Atomic operation, removes the item from the table and returns it
 	row := network.pingTable.Pop(randomID)
 	// Nil row implies a response was found in time
@@ -246,7 +237,7 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID, replacement *Con
 			fmt.Println("No replacement was found. Deleting.")
 		} else {
 			fmt.Println("The replacement has an ID of " + replacement.ID.String() + " TODO: IMPLEMENT")
-			//network.routingTable.ReplaceContact()
+			network.routingTable.ReplaceContact(randomID,replacement,network)
 		}
 	} else {
 		fmt.Println("Looked to the table for " + randomID.String() + " but received a response in time")
@@ -266,15 +257,7 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	//var contact Contact
 	// Does this simply work??
 	if !network.Me().ID.Equals(contact.ID) {
-		fmt.Println("---------Handle PONG AND ADD CONTACT---------")
-		row3 := network.GeteTable().Pop(NewKademliaID(pongMessage.RandomId))
-		if row3 == nil {
-			fmt.Println("-----------EMPTY-------------------")
-			network.routingTable.AddContact(contact,network)
-		} else{
-			fmt.Println("-----------Removed from bucket-------")
-		}
-		
+		network.routingTable.AddContact(contact,network)	
 	} else {
 		fmt.Println("Recevied pong from self. Not adding to contact list")
 	}
