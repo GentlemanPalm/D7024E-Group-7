@@ -206,7 +206,7 @@ func TestHandleFindValue(t *testing.T) {
 
 	for i := 0; i < 25; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	rid := NewRandomKademliaID()
@@ -270,7 +270,7 @@ func TestHandleFindNode(t *testing.T) {
 
 	for i := 0; i < 25; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	rid := NewRandomKademliaID()
@@ -313,7 +313,7 @@ func TestNodeLookup(t *testing.T) {
 
 	for i := 0; i < nrofContacts; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	target := NewRandomKademliaID()
@@ -374,7 +374,7 @@ func TestValueLookup(t *testing.T) {
 
 	for i := 0; i < nrofContacts; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	target := NewRandomKademliaID()

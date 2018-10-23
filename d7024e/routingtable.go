@@ -1,6 +1,6 @@
 package d7024e
 
-const bucketSize = 20
+const bucketSize = 1
 
 // TODO: Needs to be managed under mutex?
 // The buckets themselves are already properly managed through mutex
@@ -27,10 +27,10 @@ func (rt *RoutingTable) Me() *Contact {
 }
 
 // AddContact add a new contact to the correct Bucket
-func (routingTable *RoutingTable) AddContact(contact Contact) {
+func (routingTable *RoutingTable) AddContact(contact Contact, network *Network) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
 	bucket := routingTable.buckets[bucketIndex]
-	bucket.AddContact(contact)
+	bucket.AddContact(contact,network)
 }
 
 // FindClosestContacts finds the count closest Contacts to the target in the RoutingTable

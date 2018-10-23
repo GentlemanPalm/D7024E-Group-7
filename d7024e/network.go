@@ -19,6 +19,7 @@ type Network struct {
 	nodeLookupTable *NodeLookupTable
 	dw              DataWriter
 	rpcTable        *RpcTable
+	eTable			*RpcTable
 	storeTable      *StoreTable
 }
 
@@ -31,13 +32,22 @@ func NewNetwork(routingTable *RoutingTable) *Network {
 	nw.nodeLookupTable = NewNodeLookupTable()
 	nw.dw = &NetworkDataWriter{}
 	nw.rpcTable = NewRpcTable()
+	nw.eTable = NewRpcTable()
 	nw.storeTable = NewStoreTable()
 	go nw.storeTable.Expire()
 	return nw
 }
 
+
 func (network *Network) Me() *Contact {
 	return network.routingTable.Me()
+}
+
+func (network *Network) Hello() {
+	fmt.Println("----------------Hello-------------")
+}
+func (network *Network) GeteTable() *RpcTable{
+	return network.eTable
 }
 
 func (network *Network) GetStoreTable() *StoreTable {
@@ -110,6 +120,7 @@ func (network *Network) processPacket(packet *NetworkMessage.Packet) {
 	}
 
 	if packet.Pong != nil {
+		fmt.Println("------Revieved PONG--------")
 		go network.HandlePongMessage(packet.Pong)
 	} else {
 		fmt.Println("Received packet, but PONG left blank")
@@ -164,7 +175,7 @@ func (network *Network) HandleOriginMessage(origin *NetworkMessage.KademliaPair)
 	fmt.Println("id=" + origin.KademliaId + " addr=" + origin.Address)
 	if !network.Me().ID.Equals(NewKademliaID(origin.KademliaId)) {
 		fmt.Println("Added contact")
-		network.routingTable.AddContact(NewContact(NewKademliaID(origin.KademliaId), origin.Address))
+		network.routingTable.AddContact(NewContact(NewKademliaID(origin.KademliaId), origin.Address), network)
 	} else {
 		fmt.Println("Received origin message from self. Won't add.")
 	}
@@ -205,8 +216,9 @@ func (network *Network) HandlePingMessage(pingMessage *NetworkMessage.Ping) {
 	contact := NewContact(NewKademliaID(pingMessage.KademliaId), pingMessage.Address)
 
 	if !contact.ID.Equals(network.Me().ID) {
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 		fmt.Println("Added " + pingMessage.KademliaId + " @ " + pingMessage.Address + " as a contact from ping")
+
 	} else {
 		fmt.Println("Received oneself as parameter to ping message. Decided against adding it to contact list.")
 	}
@@ -251,9 +263,18 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	} else {
 		contact = NewContact(row.kademliaID, pongMessage.Address)
 	}
+	//var contact Contact
 	// Does this simply work??
 	if !network.Me().ID.Equals(contact.ID) {
-		network.routingTable.AddContact(contact)
+		fmt.Println("---------Handle PONG AND ADD CONTACT---------")
+		row3 := network.GeteTable().Pop(NewKademliaID(pongMessage.RandomId))
+		if row3 == nil {
+			fmt.Println("-----------EMPTY-------------------")
+			network.routingTable.AddContact(contact,network)
+		} else{
+			fmt.Println("-----------Removed from bucket-------")
+		}
+		
 	} else {
 		fmt.Println("Recevied pong from self. Not adding to contact list")
 	}
@@ -346,8 +367,8 @@ func (network *Network) sendPingPacket(randomID *KademliaID, contact *Contact) {
 	if merr != nil {
 		fmt.Println("Error marshalling ping packet")
 	}
-
-	network.dw.sendDataToAddress(contact.Address, out)
+	fmt.Println(contact.Address)
+	network.dw.sendDataToAddress(ensurePort(contact.Address , "42042"), out)
 }
 
 // FIND_NODE RPC
@@ -383,7 +404,7 @@ func (network *Network) handleFindContactResponse(recipient *KademliaID, message
 			fmt.Println(nodes[i].KademliaId + " @ " + nodes[i].Address)
 			kID := NewKademliaID(nodes[i].KademliaId)
 			if !network.Me().ID.Equals(kID) {
-				network.routingTable.AddContact(NewContact(kID, nodes[i].Address))
+				network.routingTable.AddContact(NewContact(kID, nodes[i].Address),network)
 			} else {
 				fmt.Println("But that's me! I can't add myself now, can I?")
 			}

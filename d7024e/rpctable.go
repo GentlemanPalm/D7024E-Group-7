@@ -39,7 +39,12 @@ func (table *RpcTable) Pop(randomId *KademliaID) *KademliaID {
 
 	table.lock.Lock()
 	defer table.lock.Unlock()
-	item := table.rows[randomId.String()].randomID
-	delete(table.rows, randomId.String())
-	return item
+	if len(table.rows) < 1 {
+		return nil
+	}else{
+		item := table.rows[randomId.String()].randomID
+		delete(table.rows, randomId.String())
+		return item
+	}
+	
 }
