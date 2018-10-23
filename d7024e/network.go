@@ -268,10 +268,13 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	if !network.Me().ID.Equals(contact.ID) {
 		fmt.Println("---------Handle PONG AND ADD CONTACT---------")
 		row3 := network.GeteTable().Pop(NewKademliaID(pongMessage.RandomId))
+		fmt.Println(network.GeteTable())
 		if row3 == nil {
 			fmt.Println("-----------EMPTY-------------------")
+			fmt.Println(row3)
 			network.routingTable.AddContact(contact,network)
 		} else{
+			fmt.Println(row3)
 			fmt.Println("-----------Removed from bucket-------")
 		}
 		

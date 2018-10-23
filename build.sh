@@ -4,5 +4,5 @@ docker image prune --force
 docker build . -t kademlia
 #sleep 5
 #docker stack deploy myApp -c docker-compose.yml
-docker-compose up --scale kademliaNodes=10
+docker-compose up --scale kademliaNodes=5
 

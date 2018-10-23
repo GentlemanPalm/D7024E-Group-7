@@ -50,7 +50,7 @@ func (bucket *bucket) ReplaceContact(old *KademliaID, replacement *Contact , net
 // or moves it to the front of the bucket if it already existed
 func (bucket *bucket) addContact(contact Contact , network *Network) {
 	var element *list.Element
-	if bucket.list.Len() > bucketSize {
+	if bucket.list.Len() >= bucketSize {
 		p := false
 		for e := bucket.list.Front(); e != nil; e = e.Next() {
 			nodeID := e.Value.(Contact).ID
@@ -123,10 +123,10 @@ func (bucket *bucket) getContactAndCalcDistance(target *KademliaID) []Contact {
 func check(randomID *KademliaID,network *Network, contact *Contact) bool{
 	fmt.Println("-------------CHECKED-------------")
 	network.GeteTable().Push(randomID)
-	fmt.Println(network.GeteTable().rows)
+	fmt.Println(network.GeteTable())
 	network.sendPingPacket(randomID, contact)
-	time.Sleep(5 * time.Second)
-	fmt.Println(network.GeteTable().rows)
+	time.Sleep(time.Duration(5) * time.Second)
+	fmt.Println(network.GeteTable())
 	row2 := network.GeteTable().Pop(randomID)
 	fmt.Println("-------------CHECKED ROW 2-------------")
 	fmt.Println(row2)
