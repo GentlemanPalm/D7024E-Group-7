@@ -166,7 +166,7 @@ func TestFindValue(t *testing.T) {
 	key := NewRandomKademliaID()
 	recipient := NewContact(NewRandomKademliaID(), "127.0.0.1")
 
-	network.SendFindDataMessage(key, &recipient, nil, nil, nil)
+	network.SendFindDataMessage(key.String(), &recipient, nil, nil, nil)
 
 	if mdw.nrofTimesCalled != 1 {
 		t.Error("(FindValue) Expected packet to be sent")
@@ -502,3 +502,68 @@ func TestStore(t *testing.T) {
 
 
 }*/
+
+func TestHandleReceive(t *testing.T) {
+	network := mockNetwork()
+
+	mfh := &mockFileHandler{}
+	mfh.kvt = make(map[string][]byte)
+	network.storeTable.fh = mfh
+
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	packet := network.createPacket()
+
+	randomId := NewRandomKademliaID()
+	randomID := randomId
+	key := NewRandomKademliaID()
+
+	packet.Ping = network.createPingPacket(randomId)
+	packet.Pong = network.CreatePongMessage(packet.Ping)
+
+	packet.FindNode = &NetworkMessage.Find{
+		RandomId: randomID.String(),
+		Hash:     key.String(),
+	}
+
+	contacts := make([]Contact, 20)
+
+	for i := 0; i < 20; i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "0.0.0."+strconv.Itoa(i))
+	}
+
+	packet.Nodes = &NetworkMessage.ValueResponse{
+		RandomId: randomID.String(),
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(randomId.String(), contacts)},
+	}
+
+	packet.Value = &NetworkMessage.ValueResponse{
+		RandomId: randomID.String(),
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(randomId.String(), contacts)},
+	}
+
+	packet.Store = &NetworkMessage.Store{
+		RandomId:   randomID.String(),
+		KademliaId: network.routingTable.Me().ID.String(),
+		Address:    network.routingTable.Me().Address,
+		Hash:       key.String(),
+		Content:    []byte("Derp"),
+		Pin:        false,
+	}
+
+	packet.StoreResponse = &NetworkMessage.StoreResponse{
+		RandomId:   randomID.String(),
+		KademliaId: network.routingTable.Me().ID.String(),
+		Address:    network.routingTable.Me().Address,
+	}
+
+	packet.FindValue = &NetworkMessage.Find{
+		RandomId: randomID.String(),
+		Hash:     key.String(),
+	}
+
+	network.processPacket(packet)
+}
