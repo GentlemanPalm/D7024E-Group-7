@@ -76,6 +76,10 @@ func TestSendPing(t *testing.T) {
 	} else {
 		fmt.Println("Ping messages results in pongs")
 	}
+
+	randomId := NewRandomKademliaID()
+	network.pingTable.Push(randomId, network.Me().ID)
+	network.HandlePingTimeout(randomId, network.Me())
 }
 
 func TestHandlePing(t *testing.T) {
@@ -115,6 +119,28 @@ func TestHandlePong(t *testing.T) {
 		fmt.Println("Pong is handled correctly")
 	}
 
+}
+
+func TestSendPongMessage(t *testing.T) {
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	key := NewRandomKademliaID()
+
+	pong := &NetworkMessage.Pong{
+		RandomId:   key.String(),
+		KademliaId: network.routingTable.Me().ID.String(),
+		Address:    network.routingTable.Me().Address,
+	}
+
+	network.SendPongMessage(pong, "127.0.0.1")
+
+	if mdw.nrofTimesCalled != 1 {
+		t.Error("Expected to send Pong message after call to SendPongMessage!")
+	}
 }
 
 func TestFindNode(t *testing.T) {
@@ -554,11 +580,11 @@ func TestHandleReceive(t *testing.T) {
 		Pin:        false,
 	}
 
-	packet.StoreResponse = &NetworkMessage.StoreResponse{
+	/*packet.StoreResponse = &NetworkMessage.StoreResponse{
 		RandomId:   randomID.String(),
 		KademliaId: network.routingTable.Me().ID.String(),
 		Address:    network.routingTable.Me().Address,
-	}
+	}*/
 
 	packet.FindValue = &NetworkMessage.Find{
 		RandomId: randomID.String(),
@@ -566,4 +592,6 @@ func TestHandleReceive(t *testing.T) {
 	}
 
 	network.processPacket(packet)
+	iaddr := getIaddr()
+	fmt.Println(iaddr)
 }
