@@ -11,6 +11,9 @@ func TestHashFile(t *testing.T) {
 	expected := "0d3fd7c45c3a00e740f584098e825c56ab731bf5"
 	hash := Hash(filePath)
 
+	l := GetGlobals()
+	fmt.Println(l)
+
 	fmt.Println(expected)
 	fmt.Println(hash)
 
