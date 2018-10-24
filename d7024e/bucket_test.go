@@ -1,7 +1,6 @@
 package d7024e
 
 import (
-	"fmt"
 	"testing"
 
 	"math/rand"
@@ -16,7 +15,7 @@ func mockNets() *Network {
 	return network
 }
 
-func TestBucker(t *testing.T) {
+func TestBucket(t *testing.T) {
 	network := mockNets()  
 	bucket := NewBucket()
 	
@@ -33,6 +32,8 @@ func TestBucker(t *testing.T) {
 	randomID := NewRandomKademliaID()
 
 	distance := bucket.GetContactAndCalcDistance(randomID)
-	fmt.Println(distance)
+	if distance == nil {
+		t.Error("contacts within distance is nil")
+	}
 
 }

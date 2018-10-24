@@ -475,20 +475,28 @@ func TestStore(t *testing.T) {
 		log.Fatal(err2)
 	}
 	//Test
-	store := &NetworkMessage.Store{}
+	store := network.CreateStoreMessage(hash,content,true)
 
 	fmt.Println("File contents: %s", content)
 
 	store.RandomId = NewRandomKademliaID().String()
 	store.KademliaId = NewRandomKademliaID().String()
 	store.Address = "127.0.0.1"
-	store.Hash = hash
-	store.Content = content
-	store.Pin = true
+	network.SendStoreMessage(store, store.Address)
 	network.HandleStoreMessage(store)
-	if mdw.nrofTimesCalled != 1 {
-		t.Error("Receiving a store did NOT result in a pong message being sent")
+	fmt.Println(mdw.nrofTimesCalled)
+	if mdw.nrofTimesCalled != 2 {
+		t.Error("Receiving a store did NOT result in a response message being sent")
 	} else {
 		fmt.Println("Stor messages results in storeResponse")
 	}
+	k := NewRandomKademliaID()
+	network.rpcTable.Push(k)
+	response := network.CreateStoreResponseMessage(k)
+	response.KademliaId = k.String()
+	response.Address = "127.0.0.1" 
+	network.SendStoreResponseMessage(response, response.Address)
+	network.HandleStoreResponseMessage(response)
 }
+
+

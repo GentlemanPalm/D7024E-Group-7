@@ -77,7 +77,7 @@ func (bucket *Bucket) addContact(contact Contact, network *Network) {
 	}
 
 	if element == nil {
-		if bucket.list.Len() < bucketSize {
+		if bucket.list.Len() < GetGlobals().K {
 			bucket.list.PushFront(contact)
 		}else{
 			c := bucket.list.Back().Value.(Contact)

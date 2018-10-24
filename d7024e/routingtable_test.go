@@ -30,7 +30,8 @@ func TestRoutingTable(t *testing.T) {
 	network.routingTable.AddContact(con,network)
 	network.routingTable.AddContact(NewContact(NewKademliaID("2111111400000000000000000000000000000000"), "localhost:8002"),network)
 
-
+	me := network.routingTable.Me()
+	fmt.Println(me)
 
 	network.routingTable.ReplaceContact(kademliaid , &con2 , network)
 	network.routingTable.UpdateBucket(&con)

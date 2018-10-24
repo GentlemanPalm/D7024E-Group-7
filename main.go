@@ -21,7 +21,7 @@ const defaultPort = "42042"
 func main() {
 	//Get globals
 	globals := d7024e.GetGlobals()
-	fmt.Println(globals)
+	fmt.Println(globals.K)
 
 	// This section intends to parse command line parameters
 	var port = flag.String("port", defaultPort, "Port to expect connections to")
