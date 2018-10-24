@@ -227,7 +227,6 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID, old *Contact, re
 	time.Sleep(time.Duration(2) * time.Second)
 	// Atomic operation, removes the item from the table and returns it
 	row := network.pingTable.Pop(randomID)
-	fmt.Println("-----POP FROM TABLE PING TIMEOUT-------")
 	fmt.Println(randomID)
 	// Nil row implies a response was found in time
 	if row != nil {
@@ -237,7 +236,6 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID, old *Contact, re
 		} else {
 			fmt.Println("The replacement has an ID of " + replacement.ID.String() + " TODO: IMPLEMENT")
 			if row.onTimeout != nil {
-				fmt.Println("-----------GOING FOR TIMEOUT----------")
 				go row.onTimeout(old.ID, replacement, network)
 			} else {
 
@@ -250,8 +248,6 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID, old *Contact, re
 
 func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	// Atomically remove the item from the table and get the row
-	fmt.Println("-----POP FROM TABLE PONG Message-------")
-	fmt.Println(NewKademliaID(pongMessage.RandomId))
 	row := network.pingTable.Pop(NewKademliaID(pongMessage.RandomId))
 	var contact Contact
 	if row == nil {
@@ -259,20 +255,14 @@ func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 		contact = NewContact(NewKademliaID(pongMessage.KademliaId), pongMessage.Address)
 		if !network.Me().ID.Equals(contact.ID) {
 			network.routingTable.AddContact(contact, network)
-		} else {
-			fmt.Println("Recevied pong from self. Not adding to contact list")
 		}
 	} else {
 		contact = NewContact(row.kademliaID, pongMessage.Address)
 		if row.onResponse != nil {
-			fmt.Println("-----------GOING FOR RESPONSE----------")
 			go row.onResponse(&contact)
 		} else {
 			if !network.Me().ID.Equals(contact.ID) {
-				fmt.Println("-----------GOING FOR ADD CONTACT----------")
 				network.routingTable.AddContact(contact, network)
-			} else {
-				fmt.Println("Recevied pong from self. Not adding to contact list")
 			}
 		}
 	}
@@ -345,8 +335,6 @@ func (network *Network) SendPingMessage(contact *Contact) {
 
 func (network *Network) SendPingMessageWithReplacement(contact *Contact, replacement *Contact, onTimeout func(*KademliaID, *Contact, *Network), onResponse func(*Contact)) {
 	randomID := NewRandomKademliaID()
-	fmt.Println("-----PUSH TO TABLE-------")
-	fmt.Println(randomID)
 	network.pingTable.Push(randomID, contact.ID, onTimeout, onResponse)
 	go network.HandlePingTimeout(randomID, contact, replacement)
 	network.sendPingPacket(randomID, contact)

@@ -4,7 +4,6 @@ package d7024e
 
 import (
 	"sync"
-	"fmt"
 	//"d7024e/kademliaid"
 )
 
@@ -40,7 +39,6 @@ func NewPingTable() *PingTable {
 func (table *PingTable) Push(randomID *KademliaID, kademliaID *KademliaID,onTimeout  func(*KademliaID, *Contact, *Network),onResponse func(*Contact)) {
 	table.lock.Lock()
 	defer table.lock.Unlock()
-	fmt.Println("Recieved PUSH")
 	table.rows = append(table.rows, row{randomID, kademliaID,onTimeout,onResponse})
 }
 // Get and remove a row with the given id

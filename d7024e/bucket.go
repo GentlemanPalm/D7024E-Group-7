@@ -3,7 +3,6 @@ package d7024e
 import (
 	"container/list"
 	"sync"
-	"fmt"
 )
 
 // TODO: Make buckets no larger than k in size
