@@ -25,7 +25,7 @@ func NewBucket() *Bucket {
 func (bucket *Bucket) AddContact(contact Contact, network *Network) {
 	bucket.lock.Lock()
 	defer bucket.lock.Unlock()
-	bucket.addContact(contact,network)
+	bucket.addContact(contact, network)
 }
 
 func (bucket *Bucket) ReplaceContact(old *KademliaID, replacement *Contact, network *Network) {
@@ -41,7 +41,7 @@ func (bucket *Bucket) ReplaceContact(old *KademliaID, replacement *Contact, netw
 		}
 	}
 
-	bucket.addContact(*replacement,network)
+	bucket.addContact(*replacement, network)
 }
 
 func (bucket *Bucket) UpdateBucket(contact *Contact) {
@@ -57,7 +57,7 @@ func (bucket *Bucket) UpdateBucket(contact *Contact) {
 		}
 	}
 	if element == nil {
-		
+
 	} else {
 		bucket.list.MoveToFront(element)
 	}
@@ -77,19 +77,18 @@ func (bucket *Bucket) addContact(contact Contact, network *Network) {
 	}
 
 	if element == nil {
-		if bucket.list.Len() < GetGlobals().K {
+		if bucket.list.Len() < bucketSize {
 			bucket.list.PushFront(contact)
-		}else{
+		} else {
 			c := bucket.list.Back().Value.(Contact)
 			oldContact := &c
 			newContact := &contact
-			network.SendPingMessageWithReplacement(oldContact,newContact,network.routingTable.ReplaceContact,network.routingTable.UpdateBucket)
+			network.SendPingMessageWithReplacement(oldContact, newContact, network.routingTable.ReplaceContact, network.routingTable.UpdateBucket)
 		}
 	} else {
 		bucket.list.MoveToFront(element)
 	}
-}	
-
+}
 
 // GetContactAndCalcDistance returns an array of Contacts where
 // the distance has already been calculated
@@ -112,7 +111,6 @@ func (bucket *Bucket) getContactAndCalcDistance(target *KademliaID) []Contact {
 
 	return contacts
 }
-
 
 // Len return the size of the bucket
 func (bucket *Bucket) Len() int {

@@ -5,8 +5,8 @@ import (
 
 	"math/rand"
 	"time"
-
 )
+
 func mockNets() *Network {
 	rand.Seed(int64(time.Now().Nanosecond()))
 	me := NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000")
@@ -16,18 +16,18 @@ func mockNets() *Network {
 }
 
 func TestBucket(t *testing.T) {
-	network := mockNets()  
+	network := mockNets()
 	bucket := NewBucket()
-	
+
 	contact1 := NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8001")
 	contact2 := NewContact(NewKademliaID("1111111100000000000000000000000000000000"), "localhost:8002")
 	contact3 := NewContact(NewKademliaID("1111111200000000000000000000000000000000"), "localhost:8002")
-	
+
 	bucket.AddContact(contact1, network)
 	bucket.AddContact(contact2, network)
 
 	bucket.UpdateBucket(&contact2)
-	bucket.ReplaceContact(contact1.ID,&contact3,network)
+	bucket.ReplaceContact(contact1.ID, &contact3, network)
 
 	randomID := NewRandomKademliaID()
 

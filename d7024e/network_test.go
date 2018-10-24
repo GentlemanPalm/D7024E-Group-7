@@ -78,8 +78,8 @@ func TestSendPing(t *testing.T) {
 	}
 
 	randomId := NewRandomKademliaID()
-	network.pingTable.Push(randomId, network.Me().ID)
-	network.HandlePingTimeout(randomId, network.Me())
+	network.pingTable.Push(randomId, network.Me().ID, nil, nil)
+	network.HandlePingTimeout(randomId, network.Me(), network.Me())
 }
 
 func TestHandlePing(t *testing.T) {
@@ -590,4 +590,19 @@ func TestHandleReceive(t *testing.T) {
 	network.processPacket(packet)
 	iaddr := getIaddr()
 	fmt.Println(iaddr)
+}
+
+func TestNetworkListen(t *testing.T) {
+	me := NewContact(NewRandomKademliaID(), "127.0.0.1")
+	routingTable := NewRoutingTable(me)
+	network := NewNetwork(routingTable)
+	//go network.Listen(42042)
+	time.Sleep(time.Duration(3) * time.Second)
+
+	network.SendPingMessage(&me)
+
+	invalid := NewContact(NewRandomKademliaID(), "127.0.0.0")
+	network.SendPingMessage(&invalid)
+
+	time.Sleep(time.Duration(3) * time.Second)
 }
