@@ -606,3 +606,58 @@ func TestNetworkListen(t *testing.T) {
 
 	time.Sleep(time.Duration(3) * time.Second)
 }
+
+func TestCallbacksBucket(t *testing.T){
+	network := mockNetwork()
+	mdw := &MockDataWriter{}
+	network.dw = mdw
+
+
+	//con := NewContact(NewKademliaID("0000000000000000000000000000000000000000"), "localhost:8001")
+	//network.routingTable.AddContact(con),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000000"), "localhost:8001"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000001"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000002"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000003"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000004"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000005"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000006"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000007"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000008"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000009"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000009"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("000000000000000000000000000000000000000A"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("000000000000000000000000000000000000000B"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("000000000000000000000000000000000000000C"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("000000000000000000000000000000000000000D"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("000000000000000000000000000000000000000E"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("000000000000000000000000000000000000000F"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000010"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000011"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000012"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000013"), "localhost:8002"),network)
+	network.routingTable.AddContact(NewContact(NewKademliaID("0000000000000000000000000000000000000014"), "localhost:8002"),network)
+	
+
+	contact := NewContact(NewKademliaID("0000000000000000000000000000000000000015"), "localhost:8002")
+	contact2 := NewContact(NewKademliaID("0000000000000000000000000000000000000016"), "localhost:8002")
+	contact3:= NewContact(NewKademliaID("0000000000000000000000000000000000000017"), "localhost:8002")
+	
+	randomID := NewRandomKademliaID()
+	network.pingTable.Push(randomID, contact.ID,network.routingTable.ReplaceContact, network.routingTable.UpdateBucket)
+	network.HandlePingTimeout(randomID,&contact,&contact2)
+
+	randomID2 := NewRandomKademliaID()
+	network.pingTable.Push(randomID2, contact3.ID,network.routingTable.ReplaceContact, network.routingTable.UpdateBucket)
+
+	pong := &NetworkMessage.Pong{
+		RandomId:   randomID2.String(),
+		KademliaId: contact3.ID.String(),
+		Address:    contact3.Address,
+	}
+
+	network.HandlePongMessage(pong)
+	network.pingTable.Push(randomID2, contact3.ID,nil, nil)
+	network.HandlePongMessage(pong)
+	
+}

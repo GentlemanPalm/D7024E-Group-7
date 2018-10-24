@@ -227,7 +227,7 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID,old *Contact, rep
 	time.Sleep(time.Duration(2) * time.Second)
 	// Atomic operation, removes the item from the table and returns it
 	row := network.pingTable.Pop(randomID)
-	fmt.Println("-----POP FROM TABLE-------")
+	fmt.Println("-----POP FROM TABLE PING TIMEOUT-------")
 	fmt.Println(randomID)
 	// Nil row implies a response was found in time
 	if row != nil {
@@ -250,7 +250,7 @@ func (network *Network) HandlePingTimeout(randomID *KademliaID,old *Contact, rep
 
 func (network *Network) HandlePongMessage(pongMessage *NetworkMessage.Pong) {
 	// Atomically remove the item from the table and get the row
-	fmt.Println("-----POP FROM TABLE-------")
+	fmt.Println("-----POP FROM TABLE PONG Message-------")
 	fmt.Println(NewKademliaID(pongMessage.RandomId))
 	row := network.pingTable.Pop(NewKademliaID(pongMessage.RandomId))
 	var contact Contact
