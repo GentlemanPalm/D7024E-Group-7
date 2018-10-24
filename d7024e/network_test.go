@@ -587,7 +587,10 @@ func TestHandleReceive(t *testing.T) {
 		Hash:     key.String(),
 	}
 
+	null := network.createPacket()
+
 	network.processPacket(packet)
+	network.processPacket(null)
 	iaddr := getIaddr()
 	fmt.Println(iaddr)
 }
@@ -605,4 +608,36 @@ func TestNetworkListen(t *testing.T) {
 	network.SendPingMessage(&invalid)
 
 	time.Sleep(time.Duration(3) * time.Second)
+}
+
+func TestHandleFindDataResponse(t *testing.T) {
+	randomId := NewRandomKademliaID()
+	contacts := make([]Contact, 20)
+
+	for i := 0; i < 20; i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "0.0.0."+strconv.Itoa(i))
+	}
+	nodes := &NetworkMessage.ValueResponse{
+		RandomId: randomId.String(),
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(randomId.String(), contacts)},
+	}
+
+	value := &NetworkMessage.ValueResponse{
+		RandomId: randomId.String(),
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(randomId.String(), contacts)},
+	}
+	cbc := &callbackContainer{}
+	me := NewContact(NewRandomKademliaID(), "127.0.0.1")
+	cbc.me = &me
+	cbc.onContacts = cbcTestContacts
+	cbc.onData = cbcTestData
+	cbc.handleFindDataResponse(randomId, nodes)
+	cbc.handleFindDataResponse(randomId, value)
+}
+
+func cbcTestContacts(id *KademliaID, contacts []Contact) {
+
+}
+func cbcTestData(id *KademliaID, data []byte) {
+
 }
