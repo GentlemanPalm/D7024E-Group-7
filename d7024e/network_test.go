@@ -525,6 +525,35 @@ func TestStore(t *testing.T) {
 	network.HandleStoreResponseMessage(response)
 }
 
+func TestStoreIterativePalm(t *testing.T) {
+	network := mockNetwork()
+
+	mfh := &mockFileHandler{}
+	mfh.kvt = make(map[string][]byte)
+	network.storeTable.fh = mfh
+
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	randomId := NewRandomKademliaID()
+	network.SendStoreIterative(randomId.String(), []byte("Hello, World"))
+
+	hvc := &hashValueContainer{}
+	hvc.network = network
+	hvc.hash = randomId.String()
+	hvc.content = []byte("Hello, World")
+
+	contacts := make([]Contact, 20)
+	for i := 0; i < len(contacts); i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
+	}
+
+	data := []byte("Herp derp")
+	hvc.storeOnReceivedContacts(contacts, &data)
+}
+
 func TestHandleReceive(t *testing.T) {
 	network := mockNetwork()
 
