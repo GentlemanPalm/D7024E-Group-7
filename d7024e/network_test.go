@@ -106,7 +106,7 @@ func TestHandlePong(t *testing.T) {
 	if len(closest) != 0 {
 		t.Error("(TestPong) Somehow the routing table is already populated.")
 	}
-	network.pingTable.Push(id, kid)
+	network.pingTable.Push(id, kid, nil, nil)
 	pong := &NetworkMessage.Pong{}
 	pong.RandomId = id.String()
 	pong.KademliaId = kid.String()
@@ -232,7 +232,7 @@ func TestHandleFindValue(t *testing.T) {
 
 	for i := 0; i < 25; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact, network)
 	}
 
 	rid := NewRandomKademliaID()
@@ -296,7 +296,7 @@ func TestHandleFindNode(t *testing.T) {
 
 	for i := 0; i < 25; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact, network)
 	}
 
 	rid := NewRandomKademliaID()
@@ -339,7 +339,7 @@ func TestNodeLookup(t *testing.T) {
 
 	for i := 0; i < nrofContacts; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact, network)
 	}
 
 	target := NewRandomKademliaID()
@@ -400,7 +400,7 @@ func TestValueLookup(t *testing.T) {
 
 	for i := 0; i < nrofContacts; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact, network)
 	}
 
 	target := NewRandomKademliaID()
@@ -501,33 +501,29 @@ func TestStore(t *testing.T) {
 		log.Fatal(err2)
 	}
 	//Test
-	store := &NetworkMessage.Store{}
+	store := network.CreateStoreMessage(hash, content, true)
 
 	fmt.Println("File contents: %s", content)
 
 	store.RandomId = NewRandomKademliaID().String()
 	store.KademliaId = NewRandomKademliaID().String()
 	store.Address = "127.0.0.1"
-	store.Hash = hash
-	store.Content = content
-	store.Pin = true
+	network.SendStoreMessage(store, store.Address)
 	network.HandleStoreMessage(store)
-	if mdw.nrofTimesCalled != 1 {
-		t.Error("Receiving a store did NOT result in a pong message being sent")
+	fmt.Println(mdw.nrofTimesCalled)
+	if mdw.nrofTimesCalled != 2 {
+		t.Error("Receiving a store did NOT result in a response message being sent")
 	} else {
 		fmt.Println("Stor messages results in storeResponse")
 	}
+	k := NewRandomKademliaID()
+	network.rpcTable.Push(k)
+	response := network.CreateStoreResponseMessage(k)
+	response.KademliaId = k.String()
+	response.Address = "127.0.0.1"
+	network.SendStoreResponseMessage(response, response.Address)
+	network.HandleStoreResponseMessage(response)
 }
-
-/*func TestHandleStore(t *testing.T) {
-	network := mockNetwork()
-	mdw := &MockDataWriter{}
-	sentPacket := &PacketContainer{}
-	mdw.callback = sentPacket.findNodeCallback
-	network.dw = mdw
-
-
-}*/
 
 func TestHandleReceive(t *testing.T) {
 	network := mockNetwork()

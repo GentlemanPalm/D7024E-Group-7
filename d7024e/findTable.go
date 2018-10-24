@@ -89,7 +89,7 @@ func (ft *FindTable) timeout(onTimeout func(*KademliaID, *KademliaID), rID *Kade
 	if elem != nil {
 		fmt.Println("Timeout occurred and " + rID.String() + " was discarded.")
 		if onTimeout != nil {
-			onTimeout(elem.recipient, elem.randomID)
+			go onTimeout(elem.recipient, elem.randomID)
 		} else {
 			fmt.Println("Timeout occurred, but the onTimeout function wasn't set")
 		}

@@ -9,26 +9,26 @@ import (
 
 // bucket definition
 // contains a List
-type bucket struct {
+type Bucket struct {
 	list *list.List
 	lock *sync.Mutex
 }
 
 // newBucket returns a new instance of a bucket
-func newBucket() *bucket {
-	bucket := &bucket{}
+func NewBucket() *Bucket {
+	bucket := &Bucket{}
 	bucket.list = list.New()
 	bucket.lock = &sync.Mutex{}
 	return bucket
 }
 
-func (bucket *bucket) AddContact(contact Contact) {
+func (bucket *Bucket) AddContact(contact Contact, network *Network) {
 	bucket.lock.Lock()
 	defer bucket.lock.Unlock()
-	bucket.addContact(contact)
+	bucket.addContact(contact,network)
 }
 
-func (bucket *bucket) ReplaceContact(old *KademliaID, replacement *Contact) {
+func (bucket *Bucket) ReplaceContact(old *KademliaID, replacement *Contact, network *Network) {
 	bucket.lock.Lock()
 	defer bucket.lock.Unlock()
 
@@ -41,12 +41,32 @@ func (bucket *bucket) ReplaceContact(old *KademliaID, replacement *Contact) {
 		}
 	}
 
-	bucket.addContact(*replacement)
+	bucket.addContact(*replacement,network)
+}
+
+func (bucket *Bucket) UpdateBucket(contact *Contact) {
+	bucket.lock.Lock()
+	defer bucket.lock.Unlock()
+
+	var element *list.Element
+	for e := bucket.list.Front(); e != nil; e = e.Next() {
+		nodeID := e.Value.(Contact).ID
+
+		if (contact).ID.Equals(nodeID) {
+			element = e
+		}
+	}
+	if element == nil {
+		
+	} else {
+		bucket.list.MoveToFront(element)
+	}
+
 }
 
 // AddContact adds the Contact to the front of the bucket
 // or moves it to the front of the bucket if it already existed
-func (bucket *bucket) addContact(contact Contact) {
+func (bucket *Bucket) addContact(contact Contact, network *Network) {
 	var element *list.Element
 	for e := bucket.list.Front(); e != nil; e = e.Next() {
 		nodeID := e.Value.(Contact).ID
@@ -57,17 +77,23 @@ func (bucket *bucket) addContact(contact Contact) {
 	}
 
 	if element == nil {
-		if bucket.list.Len() < bucketSize {
+		if bucket.list.Len() < GetGlobals().K {
 			bucket.list.PushFront(contact)
+		}else{
+			c := bucket.list.Back().Value.(Contact)
+			oldContact := &c
+			newContact := &contact
+			network.SendPingMessageWithReplacement(oldContact,newContact,network.routingTable.ReplaceContact,network.routingTable.UpdateBucket)
 		}
 	} else {
 		bucket.list.MoveToFront(element)
 	}
-}
+}	
+
 
 // GetContactAndCalcDistance returns an array of Contacts where
 // the distance has already been calculated
-func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
+func (bucket *Bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 	bucket.lock.Lock()
 	defer bucket.lock.Unlock()
 	return bucket.getContactAndCalcDistance(target)
@@ -75,7 +101,7 @@ func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 
 // GetContactAndCalcDistance returns an array of Contacts where
 // the distance has already been calculated
-func (bucket *bucket) getContactAndCalcDistance(target *KademliaID) []Contact {
+func (bucket *Bucket) getContactAndCalcDistance(target *KademliaID) []Contact {
 	var contacts []Contact
 
 	for elt := bucket.list.Front(); elt != nil; elt = elt.Next() {
@@ -87,7 +113,8 @@ func (bucket *bucket) getContactAndCalcDistance(target *KademliaID) []Contact {
 	return contacts
 }
 
+
 // Len return the size of the bucket
-func (bucket *bucket) Len() int {
+func (bucket *Bucket) Len() int {
 	return bucket.list.Len()
 }

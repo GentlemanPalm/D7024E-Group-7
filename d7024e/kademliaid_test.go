@@ -1,6 +1,9 @@
 package d7024e
 
-import "testing"
+import (
+	"testing"
+	"fmt"
+)
 
 func TestKademliaID(t *testing.T) {
 	rand := NewRandomKademliaID()
@@ -26,5 +29,13 @@ func TestKademliaID(t *testing.T) {
 	if !zID.CalcDistance(aID).Equals(aID) {
 		t.Error("XOR property does not seem to hold")
 	}
+
+	var a bool
+	var b bool
+
+	a = zID.Less(zID)
+	fmt.Println(a)
+	b = zID.Less(aID)
+	fmt.Println(b)
 
 }

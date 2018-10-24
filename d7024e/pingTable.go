@@ -3,7 +3,6 @@ package d7024e
 // This file intends to implement a table of ping calls and their timeouts
 
 import (
-	"fmt"
 	"sync"
 	//"d7024e/kademliaid"
 )
@@ -21,6 +20,8 @@ import (
 type row struct {
 	randomID   *KademliaID // The rand
 	kademliaID *KademliaID //
+	onTimeout  func(*KademliaID, *Contact, *Network)
+	onResponse func(*Contact)
 }
 
 type PingTable struct {
@@ -35,13 +36,11 @@ func NewPingTable() *PingTable {
 	return table
 }
 
-func (table *PingTable) Push(randomID *KademliaID, kademliaID *KademliaID) {
+func (table *PingTable) Push(randomID *KademliaID, kademliaID *KademliaID,onTimeout  func(*KademliaID, *Contact, *Network),onResponse func(*Contact)) {
 	table.lock.Lock()
 	defer table.lock.Unlock()
-	table.rows = append(table.rows, row{randomID, kademliaID})
-	fmt.Println(table.rows)
+	table.rows = append(table.rows, row{randomID, kademliaID,onTimeout,onResponse})
 }
-
 // Get and remove a row with the given id
 // Returns nil if the block wasn't found
 // Untested and unlikely to work as intended
@@ -54,9 +53,15 @@ func (table *PingTable) Pop(id *KademliaID) *row {
 		}
 		if table.rows[i].randomID.Equals(id) {
 			item := table.rows[i]
-			table.rows = table.rows[:i+copy(table.rows[i:], table.rows[i+1:])]
+
+			table.rows[i] = table.rows[len(table.rows)-1] // Copy last element to index i
+			table.rows[len(table.rows)-1] = row{nil,nil,nil,nil}   // Erase last element (write zero value)
+			table.rows = table.rows[:len(table.rows)-1]   // Truncate slice
+
 			return &item
 		}
 	}
 	return nil
 }
+
+
