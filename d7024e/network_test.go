@@ -525,6 +525,35 @@ func TestStore(t *testing.T) {
 	network.HandleStoreResponseMessage(response)
 }
 
+func TestStoreIterativePalm(t *testing.T) {
+	network := mockNetwork()
+
+	mfh := &mockFileHandler{}
+	mfh.kvt = make(map[string][]byte)
+	network.storeTable.fh = mfh
+
+	mdw := &MockDataWriter{}
+	sentPacket := &PacketContainer{}
+	mdw.callback = sentPacket.findNodeCallback
+	network.dw = mdw
+
+	randomId := NewRandomKademliaID()
+	network.SendStoreIterative(randomId.String(), []byte("Hello, World"))
+
+	hvc := &hashValueContainer{}
+	hvc.network = network
+	hvc.hash = randomId.String()
+	hvc.content = []byte("Hello, World")
+
+	contacts := make([]Contact, 20)
+	for i := 0; i < len(contacts); i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
+	}
+
+	data := []byte("Herp derp")
+	hvc.storeOnReceivedContacts(contacts, &data)
+}
+
 func TestHandleReceive(t *testing.T) {
 	network := mockNetwork()
 
@@ -587,7 +616,10 @@ func TestHandleReceive(t *testing.T) {
 		Hash:     key.String(),
 	}
 
+	null := network.createPacket()
+
 	network.processPacket(packet)
+	network.processPacket(null)
 	iaddr := getIaddr()
 	fmt.Println(iaddr)
 }
@@ -661,3 +693,36 @@ func TestCallbacksBucket(t *testing.T){
 	network.HandlePongMessage(pong)
 	
 }
+
+func TestHandleFindDataResponse(t *testing.T) {
+	randomId := NewRandomKademliaID()
+	contacts := make([]Contact, 20)
+
+	for i := 0; i < 20; i++ {
+		contacts[i] = NewContact(NewRandomKademliaID(), "0.0.0."+strconv.Itoa(i))
+	}
+	nodes := &NetworkMessage.ValueResponse{
+		RandomId: randomId.String(),
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(randomId.String(), contacts)},
+	}
+
+	value := &NetworkMessage.ValueResponse{
+		RandomId: randomId.String(),
+		Response: &NetworkMessage.ValueResponse_Nodes{createNodeResponse(randomId.String(), contacts)},
+	}
+	cbc := &callbackContainer{}
+	me := NewContact(NewRandomKademliaID(), "127.0.0.1")
+	cbc.me = &me
+	cbc.onContacts = cbcTestContacts
+	cbc.onData = cbcTestData
+	cbc.handleFindDataResponse(randomId, nodes)
+	cbc.handleFindDataResponse(randomId, value)
+}
+
+func cbcTestContacts(id *KademliaID, contacts []Contact) {
+
+}
+func cbcTestData(id *KademliaID, data []byte) {
+
+}
+
