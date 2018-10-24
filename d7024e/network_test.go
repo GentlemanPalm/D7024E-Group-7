@@ -102,7 +102,7 @@ func TestHandlePong(t *testing.T) {
 	if len(closest) != 0 {
 		t.Error("(TestPong) Somehow the routing table is already populated.")
 	}
-	network.pingTable.Push(id, kid)
+	network.pingTable.Push(id, kid,nil,nil)
 	pong := &NetworkMessage.Pong{}
 	pong.RandomId = id.String()
 	pong.KademliaId = kid.String()
@@ -166,7 +166,7 @@ func TestFindValue(t *testing.T) {
 	key := NewRandomKademliaID()
 	recipient := NewContact(NewRandomKademliaID(), "127.0.0.1")
 
-	network.SendFindDataMessage(key, &recipient, nil, nil, nil)
+	network.SendFindDataMessage(key.String(), &recipient, nil, nil, nil)
 
 	if mdw.nrofTimesCalled != 1 {
 		t.Error("(FindValue) Expected packet to be sent")
@@ -206,7 +206,7 @@ func TestHandleFindValue(t *testing.T) {
 
 	for i := 0; i < 25; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	rid := NewRandomKademliaID()
@@ -270,7 +270,7 @@ func TestHandleFindNode(t *testing.T) {
 
 	for i := 0; i < 25; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	rid := NewRandomKademliaID()
@@ -313,7 +313,7 @@ func TestNodeLookup(t *testing.T) {
 
 	for i := 0; i < nrofContacts; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	target := NewRandomKademliaID()
@@ -374,7 +374,7 @@ func TestValueLookup(t *testing.T) {
 
 	for i := 0; i < nrofContacts; i++ {
 		contact := NewContact(NewRandomKademliaID(), "127.0.0."+strconv.Itoa(i))
-		network.routingTable.AddContact(contact)
+		network.routingTable.AddContact(contact,network)
 	}
 
 	target := NewRandomKademliaID()
@@ -492,13 +492,3 @@ func TestStore(t *testing.T) {
 		fmt.Println("Stor messages results in storeResponse")
 	}
 }
-
-/*func TestHandleStore(t *testing.T) {
-	network := mockNetwork()
-	mdw := &MockDataWriter{}
-	sentPacket := &PacketContainer{}
-	mdw.callback = sentPacket.findNodeCallback
-	network.dw = mdw
-
-
-}*/
